@@ -129,14 +129,14 @@ button.go:focus-visible { outline: 3px solid var(--agua); outline-offset: 3px; }
 
   <div id="menu" class="screen">
     <div class="folha">
-      <span class="eyebrow">Mundo aberto em primeira pessoa</span>
+      <span class="eyebrow">Mundo aberto em terceira pessoa</span>
       <h1>Retomada do Sítio</h1>
       <p>A Cuca enfeitiçou o Sítio do Picapau Amarelo. Montou acampamento no Reino das Águas Claras, no pomar das jabuticabeiras, no poço do Visconde e no Capoeirão dos Tucanos-Vermelhos, engaiolou Narizinho, o Visconde, Rabicó e o Quindim, e se trancou na caverna. Sobrou você, Pedrinho, um bodoque e a Emília falando no seu ouvido.</p>
-      <p>Limpe cada acampamento e solte quem está preso. Pelo caminho tem a ponte do ribeirão, o rancho do Tio Barnabé, um saci para pegar no taquaral, a cachoeira da Iara e o Arraial dos Tucanos.</p>
+      <p>Limpe cada acampamento e solte quem está preso. Pelo caminho tem a ponte do ribeirão, o rancho do Tio Barnabé, um saci para pegar no taquaral, a cachoeira da Iara e o Arraial dos Tucanos. Tem caminhonete na porteira: na estrada de terra ela corre, no pasto nem tanto.</p>
       <div class="teclas" id="ajuda">
         <span><kbd>WASD</kbd>andar</span><span><kbd>Mouse</kbd>mirar</span><span><kbd>Clique</kbd>bodoque</span>
         <span><kbd>G</kbd>pó de pirlimpimpim</span><span><kbd>Shift</kbd>correr</span><span><kbd>C</kbd>agachar</span>
-        <span><kbd>Espaço</kbd>pular</span><span><kbd>E</kbd>falar e soltar</span><span><kbd>Q</kbd>Quindim</span><span><kbd>P</kbd>pausar</span>
+        <span><kbd>Espaço</kbd>pular</span><span><kbd>E</kbd>falar, soltar, dirigir</span><span><kbd>Q</kbd>Quindim</span><span><kbd>P</kbd>pausar</span>
       </div>
       <div class="botoes">
         <button class="go" id="bStart" type="button">Pegar o bodoque</button>
@@ -239,31 +239,47 @@ var canvas = $('c');
 var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
 var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: !coarse });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarse ? 1.5 : 2));
-var scene = new THREE.Scene();
-scene.background = new THREE.Color(0x9fd4ef);
-scene.fog = new THREE.Fog(0xb5dcec, 90, 330);
-var camera = new THREE.PerspectiveCamera(75, 1, 0.1, 700);
+renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+function lin(hex) { return new THREE.Color(hex).convertSRGBToLinear(); }
+var scene = new THREE.Scene(), HAZE = lin(0xe9e6d8);
+scene.fog = new THREE.Fog(HAZE, 110, 380);
+var camera = new THREE.PerspectiveCamera(65, 1, 0.2, 900);
 camera.rotation.order = 'YXZ';
 scene.add(camera);
-scene.add(new THREE.HemisphereLight(0xdff2ff, 0x55683a, 0.78));
-var sun = new THREE.DirectionalLight(0xfff1cf, 0.9); sun.position.set(120, 200, 60); scene.add(sun);
+// late-afternoon light: warm low sun, cool sky fill
+scene.add(new THREE.HemisphereLight(lin(0xc4dcff), lin(0x7d8758), 1.0));
+var SD = new THREE.Vector3(0.62, 0.55, 0.42).normalize(), sun = new THREE.DirectionalLight(lin(0xffdfae), 2.5);
+sun.castShadow = true; sun.shadow.mapSize.set(coarse ? 1024 : 2048, coarse ? 1024 : 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.45;
+(function (c) { c.left = -80; c.right = 80; c.top = 80; c.bottom = -80; c.near = 20; c.far = 420; })(sun.shadow.camera);
+scene.add(sun); scene.add(sun.target);
+var sky = new THREE.Group();
+(function () {
+  var g = new THREE.SphereGeometry(800, 24, 14), p = g.attributes.position, col = new Float32Array(p.count * 3), top = lin(0x3a7fd6), c = new THREE.Color();
+  for (var i = 0; i < p.count; i++) { var t = Math.pow(Math.max(0, p.getY(i) / 800), 0.38); c.copy(HAZE).lerp(top, t); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  sky.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })));
+  var disc = new THREE.Mesh(new THREE.SphereGeometry(26, 12, 8), new THREE.MeshBasicMaterial({ color: 0xfff4d0, fog: false, toneMapped: false })); disc.position.copy(SD).multiplyScalar(760); sky.add(disc);
+  scene.add(sky);
+})();
 
 var geoC = {}, matC = {};
 function G(key, make) { return geoC[key] || (geoC[key] = make()); }
-function M(color, emis) { var k = color + '_' + (emis || 0); return matC[k] || (matC[k] = new THREE.MeshStandardMaterial({ color: color, roughness: 0.95, flatShading: true, emissive: emis || 0 })); }
-function put(m, x, y, z) { m.position.set(x || 0, y || 0, z || 0); return m; }
+function M(color, emis) { var k = color + '_' + (emis || 0); return matC[k] || (matC[k] = new THREE.MeshStandardMaterial({ color: lin(color), roughness: 0.9, flatShading: true, emissive: lin(emis || 0) })); }
+function put(m, x, y, z) { m.position.set(x || 0, y || 0, z || 0); m.castShadow = m.receiveShadow = true; return m; }
 function box(w, h, d, mat, x, y, z) { return put(new THREE.Mesh(G('b' + w + '_' + h + '_' + d, function () { return new THREE.BoxGeometry(w, h, d); }), mat), x, y, z); }
 function sph(r, mat, x, y, z, sx, sy, sz) { var m = put(new THREE.Mesh(G('s' + r, function () { return new THREE.IcosahedronGeometry(r, 1); }), mat), x, y, z); if (sx) m.scale.set(sx, sy, sz); return m; }
 function cyl(rt, rb, h, mat, x, y, z, seg) { seg = seg || 7; return put(new THREE.Mesh(G('c' + rt + '_' + rb + '_' + h + '_' + seg, function () { return new THREE.CylinderGeometry(rt, rb, h, seg); }), mat), x, y, z); }
 function cone(r, h, mat, x, y, z, seg) { return cyl(0, r, h, mat, x, y, z, seg || 6); }
 function grp() { var g = new THREE.Group(); for (var i = 0; i < arguments.length; i++) g.add(arguments[i]); return g; }
 var UP = new THREE.Vector3(0, 1, 0);
-function beam(ax, ay, az, bx, by, bz, r, mat) { var d = new THREE.Vector3(bx - ax, by - ay, bz - az), l = d.length(), m = new THREE.Mesh(G('u' + r, function () { return new THREE.CylinderGeometry(r, r, 1, 5); }), mat); m.scale.y = l; m.position.set((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2); m.quaternion.setFromUnitVectors(UP, d.normalize()); return m; }
+function beam(ax, ay, az, bx, by, bz, r, mat) { var d = new THREE.Vector3(bx - ax, by - ay, bz - az), l = d.length(), m = new THREE.Mesh(G('u' + r, function () { return new THREE.CylinderGeometry(r, r, 1, 5); }), mat); m.scale.y = l; m.castShadow = true; m.position.set((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2); m.quaternion.setFromUnitVectors(UP, d.normalize()); return m; }
 function board(text, w, h, bg, fg) {
   var cv = document.createElement('canvas'); cv.width = 512; cv.height = Math.round(512 * h / w); var cx = cv.getContext('2d'), ch = cv.height;
   cx.fillStyle = bg; cx.fillRect(0, 0, 512, ch); cx.strokeStyle = fg; cx.lineWidth = 10; cx.strokeRect(5, 5, 502, ch - 10);
   cx.fillStyle = fg; cx.font = 'bold ' + Math.round(ch * 0.34) + 'px Georgia, serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(text, 256, ch / 2 + 2, 470);
-  var a = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv) })), b = a.clone(); a.position.z = 0.02; b.position.z = -0.02; b.rotation.y = Math.PI; return grp(a, b);
+  var tx = new THREE.CanvasTexture(cv); tx.encoding = THREE.sRGBEncoding;
+  var a = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tx })), b = a.clone(); a.position.z = 0.02; b.position.z = -0.02; b.rotation.y = Math.PI; return grp(a, b);
 }
 function casa(w, h, d, cor, roofC, doorC) {
   var rf = cone((w + 1.2) / 1.414, h * 0.7, M(roofC), 0, h + h * 0.35, 0, 4), hold = grp(rf), dh = Math.min(1.9, h * 0.8); rf.rotation.y = Math.PI / 4; hold.scale.z = (d + 1.2) / (w + 1.2);
@@ -287,15 +303,19 @@ function pen(cx, cz, sz) { var y = H(cx, cz), w = M(0x8a6238), c = [[-1, -1], [1
       if (t > 0) { var dr = zn.c === 2 ? 0.3 : 0.5, dg = zn.c === 2 ? 0.27 : 0.4, db = zn.c === 2 ? 0.33 : 0.26; r += (dr - r) * t; gg += (dg - gg) * t; b += (db - b) * t; }
     }
     if (h > 0.1) { var rt = 1 - smooth(1.6, 4.6, roadD(x, z)); r += (0.56 - r) * rt; gg += (0.44 - gg) * rt; b += (0.28 - b) * rt; }
-    col[i * 3] = r; col[i * 3 + 1] = gg; col[i * 3 + 2] = b;
+    col[i * 3] = Math.pow(r, 2.2); col[i * 3 + 1] = Math.pow(gg, 2.2); col[i * 3 + 2] = Math.pow(b, 2.2);
   }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   // faceted look from real per-face normals: derivative-based flat shading blacks out near-camera triangles on some GPUs
   g = g.toNonIndexed(); g.computeVertexNormals();
-  scene.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 })));
-  var w = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), new THREE.MeshStandardMaterial({ color: 0x3f9cc4, transparent: true, opacity: 0.78, roughness: 0.3 }));
+  // a grain texture over the vertex colours, so the ground has detail up close
+  var nc = document.createElement('canvas'); nc.width = nc.height = 128; var nx = nc.getContext('2d'), id = nx.createImageData(128, 128);
+  for (var q = 0; q < 128 * 128; q++) { var v = 150 + Math.floor(rnd() * 105); id.data[q * 4] = v; id.data[q * 4 + 1] = v; id.data[q * 4 + 2] = v - 12; id.data[q * 4 + 3] = 255; }
+  nx.putImageData(id, 0, 0); var nt = new THREE.CanvasTexture(nc); nt.wrapS = nt.wrapT = THREE.RepeatWrapping; nt.repeat.set(140, 140);
+  var ground = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, map: nt })); ground.receiveShadow = true; scene.add(ground);
+  var w = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), new THREE.MeshStandardMaterial({ color: lin(0x2f8fb8), transparent: true, opacity: 0.8, roughness: 0.12, metalness: 0.25 }));
   w.rotation.x = -Math.PI / 2; w.position.y = WATER; scene.add(w);
-  for (var c = 0; c < 14; c++) { var cl = sph(9, new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }), (rnd() - 0.5) * 600, 110 + rnd() * 40, (rnd() - 0.5) * 600, 2 + rnd() * 2, 0.5, 1.4 + rnd()); scene.add(cl); }
+  for (var c = 0; c < 14; c++) { var cl = sph(9, new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }), (rnd() - 0.5) * 600, 110 + rnd() * 40, (rnd() - 0.5) * 600, 2 + rnd() * 2, 0.5, 1.4 + rnd()); cl.castShadow = false; scene.add(cl); }
 })();
 
 /* ---------- trees: open pasture, thick mata at the Capoeirão, bamboo where the Saci lives ---------- */
@@ -315,11 +335,11 @@ var treeGrid = {};
     d.position.set(x, h + 1.6 * s, z); d.scale.set(s, s, s); d.rotation.set(0, rnd() * 6, 0); d.updateMatrix(); tr.setMatrixAt(n, d.matrix);
     d.position.y = h + 4.4 * s; d.scale.set(s, s * (0.8 + rnd() * 0.5), s); d.updateMatrix(); fo.setMatrixAt(n, d.matrix);
     var q = rnd(); if (mata) c.setRGB(0.07 + rnd() * 0.06, 0.26 + rnd() * 0.12, 0.1); else if (q < 0.08) c.setRGB(0.98, 0.8, 0.12); else if (q < 0.12) c.setRGB(0.8, 0.45, 0.75); else c.setRGB(0.14 + rnd() * 0.12, 0.38 + rnd() * 0.2, 0.12);
-    fo.setColorAt(n, c);
+    c.convertSRGBToLinear(); fo.setColorAt(n, c);
     var key = Math.floor(x / 20) + ',' + Math.floor(z / 20); (treeGrid[key] || (treeGrid[key] = [])).push(x, z, 0.55 * s);
     n++;
   }
-  tr.count = fo.count = n; fo.instanceColor.needsUpdate = true; scene.add(tr); scene.add(fo);
+  tr.count = fo.count = n; fo.instanceColor.needsUpdate = true; tr.castShadow = fo.castShadow = true; fo.receiveShadow = true; scene.add(tr); scene.add(fo);
   var BN = 300, st = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.08, 0.12, 7.5, 5), M(0x86b83c), BN), tf = new THREE.InstancedMesh(new THREE.ConeGeometry(0.8, 2.4, 5), M(0x5f9a2e), BN);
   for (n = 0; n < BN; n++) {
     var ang = rnd() * 6.283, rad;
@@ -328,7 +348,7 @@ var treeGrid = {};
     d.position.set(x, h + 3.75 * s, z); d.scale.set(1, s, 1); d.rotation.set((rnd() - 0.5) * 0.16, 0, (rnd() - 0.5) * 0.16); d.updateMatrix(); st.setMatrixAt(n, d.matrix);
     d.position.y = h + 7.6 * s; d.scale.set(1, 1, 1); d.updateMatrix(); tf.setMatrixAt(n, d.matrix);
   }
-  scene.add(st); scene.add(tf);
+  st.castShadow = tf.castShadow = true; scene.add(st); scene.add(tf);
 })();
 
 /* ---------- characters (all face +Z) ---------- */
@@ -410,6 +430,23 @@ function mkVaca() { var g = quad(0xf2efe6, 1.9, 0.9, 0.8, 0.7), b = M(0x7a4a2a);
 function mkBurro() { var g = quad(0x8d857a, 1.6, 0.75, 0.55, 0.75), e = M(0x6f685f); g.add(cone(0.08, 0.5, e, -0.14, 1.95, 0.95, 4), cone(0.08, 0.5, e, 0.14, 1.95, 0.95, 4), box(0.36, 0.3, 0.25, M(0xe6dfd2), 0, 1.36, 1.36), sph(0.04, M(0x14110d), -0.2, 1.52, 1.2), sph(0.04, M(0x14110d), 0.2, 1.52, 1.2)); return g; }
 function mkGalinha(c) { var bk = cone(0.04, 0.1, M(0xf08a1c), 0, 0.47, 0.3, 4); bk.rotation.x = Math.PI / 2; return grp(sph(0.2, M(c), 0, 0.26, 0, 1, 1, 1.3), sph(0.11, M(c), 0, 0.48, 0.18), bk, box(0.04, 0.1, 0.12, M(0xd8362f), 0, 0.6, 0.18)); }
 function mkTucano() { return grp(sph(0.22, M(0x14110d), 0, 0.28, 0, 1, 1.3, 1), sph(0.15, M(0xd8362f), 0, 0.26, 0.12), sph(0.12, M(0xffffff), 0, 0.42, 0.12), box(0.1, 0.13, 0.44, M(0xf08a1c), 0, 0.5, 0.34), sph(0.03, M(0x58b7d8), -0.1, 0.52, 0.12), sph(0.03, M(0x58b7d8), 0.1, 0.52, 0.12)); }
+function limb(r, len, mat, x, y, z) { var g = new THREE.Group(); g.position.set(x, y, z); g.add(cyl(r, r, len, mat, 0, -len / 2, 0)); return g; }
+// Pedrinho, seen from behind: straw hat, blue shirt, shorts, slingshot in the right hand
+function mkPedrinho() {
+  var sk = M(0xe2ab80), shirt = M(0x2f6fb5), shorts = M(0x7a5230), wood = M(0x7a5230), g = new THREE.Group(), u = {};
+  u.legL = limb(0.1, 0.8, sk, -0.14, 0.8, 0); u.legR = limb(0.1, 0.8, sk, 0.14, 0.8, 0); u.armL = limb(0.075, 0.62, sk, -0.34, 1.4, 0); u.armR = limb(0.075, 0.62, sk, 0.34, 1.4, 0);
+  u.legL.add(cyl(0.125, 0.125, 0.34, shorts, 0, -0.17, 0), box(0.2, 0.1, 0.32, M(0x3a2414), 0, -0.8, 0.05)); u.legR.add(cyl(0.125, 0.125, 0.34, shorts, 0, -0.17, 0), box(0.2, 0.1, 0.32, M(0x3a2414), 0, -0.8, 0.05));
+  u.armL.add(cyl(0.095, 0.095, 0.22, shirt, 0, -0.11, 0)); u.armR.add(cyl(0.095, 0.095, 0.22, shirt, 0, -0.11, 0), cyl(0.02, 0.02, 0.22, wood, 0, -0.66, 0.08), box(0.16, 0.02, 0.02, wood, 0, -0.74, 0.14), box(0.02, 0.02, 0.14, wood, -0.07, -0.74, 0.2), box(0.02, 0.02, 0.14, wood, 0.07, -0.74, 0.2));
+  u.head = sph(0.23, sk, 0, 1.66, 0);
+  g.add(u.legL, u.legR, u.armL, u.armR, box(0.52, 0.66, 0.3, shirt, 0, 1.12, 0), box(0.5, 0.12, 0.3, shorts, 0, 0.8, 0), u.head, sph(0.24, M(0x3a2414), 0, 1.7, -0.05), cyl(0.5, 0.5, 0.04, M(0xd9b44a), 0, 1.86, 0, 10), cyl(0.22, 0.26, 0.2, M(0xd9b44a), 0, 1.96, 0, 10), box(0.12, 0.5, 0.2, M(0x8a6238), -0.2, 1.05, -0.22), sph(0.035, M(0x14110d), -0.09, 1.69, 0.2), sph(0.035, M(0x14110d), 0.09, 1.69, 0.2));
+  g.userData = u; return g;
+}
+// the farm pickup: wooden bed, round headlights
+function mkTruck(c) {
+  var b = M(c), dk = M(0x1c1a1f), gl = M(0x8fb9cf), wd = M(0x8a6238), g = grp(box(1.9, 0.55, 4.4, b, 0, 0.85, 0), box(1.86, 0.45, 1.3, b, 0, 1.32, 1.5), box(1.8, 0.95, 1.4, b, 0, 1.6, 0.15), box(1.6, 0.5, 0.06, gl, 0, 1.72, 0.87), box(1.84, 0.42, 0.9, gl, 0, 1.76, 0.15), box(1.6, 0.4, 0.06, gl, 0, 1.76, -0.57), box(1.9, 0.5, 0.1, wd, 0, 1.36, -2.15), box(0.1, 0.5, 1.6, wd, -0.9, 1.36, -1.35), box(0.1, 0.5, 1.6, wd, 0.9, 1.36, -1.35), box(2, 0.18, 0.2, M(0xbfc4c8), 0, 0.7, 2.25), box(2, 0.18, 0.2, M(0xbfc4c8), 0, 0.7, -2.25), sph(0.15, M(0xfff3b0, 0xa08a40), -0.62, 1.22, 2.16), sph(0.15, M(0xfff3b0, 0xa08a40), 0.62, 1.22, 2.16), box(1.1, 0.3, 0.06, dk, 0, 1.2, 2.17));
+  [[-1, 1.45], [1, 1.45], [-1, -1.45], [1, -1.45]].forEach(function (w) { var wh = cyl(0.44, 0.44, 0.32, dk, w[0] * 0.95, 0.44, w[1], 10); wh.rotation.z = Math.PI / 2; g.add(wh, sph(0.18, M(0xbfc4c8), w[0] * 1.1, 0.44, w[1], 0.4, 1, 1)); });
+  g.rotation.order = 'YXZ'; return g;
+}
 var MK = { narizinho: mkNarizinho, visconde: mkVisconde, rabico: mkRabico, quindim: mkQuindim };
 
 /* ---------- the Sítio: the white house with the veranda, and what the books put around it ---------- */
@@ -472,7 +509,7 @@ OUT.forEach(function (o) {
   for (i = 0; i < 3; i++) { a = i * 2.1 + 0.6; g.add(cone(2.8, 3.4, M(0x4a2d6b), Math.cos(a) * 11, 1.7, Math.sin(a) * 11, 4)); }
   g.add(sph(0.9, M(0x1c1a1f), 0, 0.75, -5), cyl(0.75, 0.75, 0.06, M(0x7dff5a, 0x3fbf20), 0, 1.3, -5, 9), cyl(0.09, 0.09, 8, wood, 4, 4, 3));
   o.flagMat = new THREE.MeshStandardMaterial({ color: 0x8a3fd1, emissive: 0x2a0f45, side: THREE.DoubleSide }); g.add(box(2.2, 1.3, 0.05, o.flagMat, 5.15, 7.2, 3));
-  o.beamMat = new THREE.MeshBasicMaterial({ color: 0x9a4fe0, transparent: true, opacity: 0.2, depthWrite: false, fog: false }); o.beam = cyl(1.4, 1.4, 120, o.beamMat, 0, 60, 0, 8); g.add(o.beam);
+  o.beamMat = new THREE.MeshBasicMaterial({ color: 0x9a4fe0, transparent: true, opacity: 0.2, depthWrite: false, fog: false }); o.beam = cyl(1.4, 1.4, 120, o.beamMat, 0, 60, 0, 8); o.beam.castShadow = false; g.add(o.beam);
   o.cage = new THREE.Group(); for (i = 0; i < 10; i++) { a = i / 10 * Math.PI * 2; o.cage.add(cyl(0.05, 0.05, 3, M(0x2b2b30), Math.cos(a) * 1.9, 1.5, Math.sin(a) * 1.9, 5)); }
   o.cage.add(cyl(2, 2, 0.12, M(0x2b2b30), 0, 3, 0, 10)); o.cage.position.set(0, 0, 3); if (o.amigo === 'quindim') o.cage.scale.set(1.5, 1, 1.5); g.add(o.cage);
   o.fig = MK[o.amigo](); o.fig.position.set(o.x, o.h, o.z + 3); if (o.amigo === 'quindim') o.fig.scale.set(0.8, 0.8, 0.8); scene.add(o.fig);
@@ -503,7 +540,7 @@ var cuca, barrier, tocaH = H(TOCA.x, TOCA.z);
   g.add(sph(9, rock, 16, 2, 10, 1.3, 1, 1.1), sph(7, M(0x3d3842), 20, 7, 4, 1, 1.1, 1), sph(6, rock, 10, 1, 18, 1.2, 0.9, 1), sph(3.2, M(0x0c0a0f), 11, 2.2, 7, 1, 1.2, 1));
   for (i = 0; i < 9; i++) { a = i / 9 * Math.PI * 2; g.add(cone(1.2, 5 + rnd() * 3, rock, Math.cos(a) * 24, 2.5, Math.sin(a) * 24, 5)); }
   g.add(sph(1.3, M(0x1c1a1f), -4, 1.1, -2), cyl(1.1, 1.1, 0.08, M(0x7dff5a, 0x3fbf20), -4, 1.9, -2, 9));
-  barrier = cyl(33, 33, 60, new THREE.MeshBasicMaterial({ color: 0x9a4fe0, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false }), TOCA.x, tocaH + 28, TOCA.z, 28); scene.add(barrier);
+  barrier = cyl(33, 33, 60, new THREE.MeshBasicMaterial({ color: 0x9a4fe0, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false }), TOCA.x, tocaH + 28, TOCA.z, 28); barrier.castShadow = false; scene.add(barrier);
   cuca = mkEnemy('C', TOCA, TOCA.x + 6, TOCA.z + 4);
 })();
 
@@ -539,7 +576,7 @@ function gotSaci(quiet) {
     say('Tio Barnabé', 'Saci se pega em dia de vento, menino. Peneira de cruzeta em cima do redemoinho, e ele é seu.'); say('Tio Barnabé', 'Leva a minha. O taquaral fica no poente, depois da estrada do arraial.');
   } });
   // the Saci's bamboo grove and its whirlwind
-  redemoinho = cyl(1.7, 0.25, 4.5, new THREE.MeshBasicMaterial({ color: 0xd9c79a, transparent: true, opacity: 0.42, depthWrite: false }), SACI.x, H(SACI.x, SACI.z) + 2.25, SACI.z, 9); scene.add(redemoinho);
+  redemoinho = cyl(1.7, 0.25, 4.5, new THREE.MeshBasicMaterial({ color: 0xd9c79a, transparent: true, opacity: 0.42, depthWrite: false }), SACI.x, H(SACI.x, SACI.z) + 2.25, SACI.z, 9); redemoinho.castShadow = false; scene.add(redemoinho);
   TALK.push({ x: SACI.x, z: SACI.z, r: 5, ok: function () { return !flags.saci; }, label: 'Pegar o redemoinho', fn: function () { if (!flags.pen) say('Emília', 'Redemoinho de saci! Com a mão não pega. O Tio Barnabé, lá no rancho da ponte, sabe como.'); else gotSaci(false); } });
   // Arraial dos Tucanos: chapel, venda, a few houses round the square
   var ax = ARRAIAL.x, az = ARRAIAL.z, ah = H(ax, az), cap = casa(6, 4.6, 9, 0xf4efe2, 0xb5452c); place(cap, ax, az - 15);
@@ -555,11 +592,19 @@ function gotSaci(quiet) {
 })();
 
 /* ---------- player + view model ---------- */
-var P = { x: 0, z: 36, y: 0, vy: 0, yaw: 0, pitch: 0, hp: 100, max: 100, ammo: 30, po: 2, dmg: 34, eye: 1.7, crouch: false, ground: true, lastHurt: -99, dead: false, cd: 0, bob: 0, qcd: 0, run: 11, jump: 8.6 };
+var P = { x: 0, z: 36, y: 0, vy: 0, yaw: 0, pitch: 0, hp: 100, max: 100, ammo: 30, po: 2, dmg: 34, eye: 1.7, crouch: false, ground: true, lastHurt: -99, dead: false, cd: 0, bob: 0, qcd: 0, run: 11, jump: 8.6, face: Math.PI, aimT: 0 };
 var perks = {}, won = false, stats = { t: 0, tiros: 0, baixas: 0 };
 var vm = new THREE.Group();
 (function () { var w = M(0x7a5230), l = cyl(0.016, 0.02, 0.2, w, -0.055, 0.14, 0), r = cyl(0.016, 0.02, 0.2, w, 0.055, 0.14, 0); l.rotation.z = 0.35; r.rotation.z = -0.35; vm.add(cyl(0.022, 0.026, 0.2, w, 0, -0.02, 0), l, r, box(0.17, 0.012, 0.012, M(0x8a1f1f), 0, 0.22, 0.02), sph(0.04, M(0xe9b890), 0, -0.12, 0, 1.2, 1, 1.4)); vm.scale.set(0.62, 0.62, 0.62); vm.position.set(0.25, -0.21, -0.5); vm.rotation.set(0.1, -0.15, 0); camera.add(vm); })();
+vm.visible = false;
 var qRun = mkQuindim(); qRun.visible = false; scene.add(qRun); var charge = { on: false, t: 0, id: 0 };
+var hero = mkPedrinho(); hero.scale.set(0.92, 0.92, 0.92); scene.add(hero);
+var cars = [], car = null, engine = null, lastLook = -9;
+[[-7, 41, 1.57, 0x2f7d6b], [-156, 36, 1.57, 0xc2452d], [150, 62, 3.5, 0x35508f]].forEach(function (c) { var o = { m: mkTruck(c[3]), x: c[0], z: c[1], h: c[2], v: 0, y: H(c[0], c[1]) }; scene.add(o.m); cars.push(o); });
+function placeCar(c) { var sh = Math.sin(c.h), ch = Math.cos(c.h), y = c.y + 1, hf = GH(c.x + sh * 1.6, c.z + ch * 1.6, y), hb = GH(c.x - sh * 1.6, c.z - ch * 1.6, y), hl = GH(c.x + ch * 0.9, c.z - sh * 0.9, y), hr = GH(c.x - ch * 0.9, c.z + sh * 0.9, y); c.m.position.set(c.x, c.y, c.z); c.m.rotation.set(-Math.atan2(hf - hb, 3.2), c.h, Math.atan2(hl - hr, 1.8)); }
+cars.forEach(placeCar);
+function enterCar(c) { car = c; P.crouch = false; firing = false; hero.visible = false; sfx(120, 0.3, 'sawtooth', 0.06, 60); if (AC) { try { var o = AC.createOscillator(), g = AC.createGain(); o.type = 'sawtooth'; o.frequency.value = 45; g.gain.value = 0.022; o.connect(g); g.connect(AC.destination); o.start(); engine = { o: o, g: g }; } catch (e) {} } if (!flags.drove) { flags.drove = true; say('Emília', 'Eu vou na carroceria! Segue a estrada de terra, que no pasto ela anda menos.'); } }
+function exitCar() { var c = car; if (!c) return; car = null; c.v = 0; P.x = c.x + Math.cos(c.h) * 2.1; P.z = c.z - Math.sin(c.h) * 2.1; P.y = Math.max(GH(P.x, P.z, c.y + 1), c.y); hero.visible = true; if (engine) { try { engine.o.stop(); } catch (e) {} engine = null; } }
 
 /* ---------- particles ---------- */
 var PN = 400, pPos = new Float32Array(PN * 3), pCol = new Float32Array(PN * 3), pVel = new Float32Array(PN * 3), pLife = new Float32Array(PN), pI = 0, pGeo = new THREE.BufferGeometry();
@@ -648,19 +693,27 @@ function kill(e) {
   else if (R() < 0.22) say('Emília', ['Virou palha!', 'Menos um capanga da jacaroa.', 'Essa foi de mestre. Quase tão boa quanto as minhas ideias.', 'Bodoque não nega fogo!'][Math.floor(R() * 4)]);
 }
 function damage(e, amt) { if (!e.alive) return; e.hp -= amt; e.flash = 0.12; e.bar.visible = true; alertOut(e.out); $('hit').className = 'on'; hitT = 0.12; sfx(700, 0.07, 'square', 0.05, 400); if (e.hp <= 0) kill(e); }
-function hurt(d) { if (P.dead || state !== 'play') return; P.hp -= d; P.lastHurt = time; sfx(140, 0.2, 'sawtooth', 0.09, 70); if (P.hp <= 0) { P.dead = true; P.deadT = 2.6; $('fade').style.opacity = 1; say('Emília', 'Levanta, Pedrinho! A Tia Nastácia te conserta com bolinho.'); } }
-function respawn() { P.dead = false; P.x = 0; P.z = 36; P.yaw = 0; P.pitch = 0; P.hp = P.max; P.ammo = Math.max(P.ammo, 30); P.po = Math.max(P.po, 1); OUT.forEach(calm); calm(TOCA); projs.forEach(function (p) { scene.remove(p.m); }); projs.length = 0; $('fade').style.opacity = 0; }
+function hurt(d) { if (P.dead || state !== 'play') return; P.hp -= d; P.lastHurt = time; sfx(140, 0.2, 'sawtooth', 0.09, 70); if (P.hp <= 0) { P.dead = true; P.deadT = 2.6; hero.visible = false; $('fade').style.opacity = 1; say('Emília', 'Levanta, Pedrinho! A Tia Nastácia te conserta com bolinho.'); } }
+function respawn() { if (car) exitCar(); P.dead = false; hero.visible = true; P.x = 0; P.z = 36; P.yaw = 0; P.pitch = 0; P.hp = P.max; P.ammo = Math.max(P.ammo, 30); P.po = Math.max(P.po, 1); OUT.forEach(calm); calm(TOCA); projs.forEach(function (p) { scene.remove(p.m); }); projs.length = 0; $('fade').style.opacity = 0; }
 function win() { won = true; save(); TOCA.enemies.forEach(function (e) { if (e.alive && e !== cuca) { e.alive = false; e.mesh.visible = false; e.bar.visible = false; } }); $('boss').hidden = true; banner('A Cuca virou fumaça', 'O Sítio do Picapau Amarelo está livre'); sfx(392, 0.3, 'triangle', 0.1, 784); setTimeout(function () { sfx(523, 0.5, 'triangle', 0.1, 1046); }, 300); say('Emília', 'Eu disse que resolvia. Com uma ajudinha sua, vá lá.'); say('Dona Benta', 'Venham pra casa, meus netos. Tem bolinho quente na varanda.'); P.winT = 6; }
+// where the crosshair points: the first enemy or patch of ground along the camera's line
+function aimPoint() {
+  var d = new THREE.Vector3(), o = camera.position, best = 110, t; camera.getWorldDirection(d);
+  for (var i = 0; i < enemies.length; i++) { var e = enemies[i]; if (!e.alive) continue; t = (e.x - o.x) * d.x + (e.y + e.top * 0.5 - o.y) * d.y + (e.z - o.z) * d.z; if (t > 4.5 && t < best) { var px = o.x + d.x * t - e.x, pz = o.z + d.z * t - e.z, py = o.y + d.y * t; if (px * px + pz * pz < 1.3 && py > e.y - 0.2 && py < e.y + e.top + 0.3) best = t; } }
+  for (t = 5; t < best; t += 2) if (o.y + d.y * t < H(o.x + d.x * t, o.z + d.z * t)) { best = t; break; }
+  return new THREE.Vector3(o.x + d.x * best, o.y + d.y * best, o.z + d.z * best);
+}
+function hand() { return new THREE.Vector3(P.x + Math.cos(P.yaw) * 0.35 - Math.sin(P.yaw) * 0.5, P.y + P.eye - 0.3, P.z - Math.sin(P.yaw) * 0.35 - Math.cos(P.yaw) * 0.5); }
 function shoot() {
-  if (P.cd > 0 || P.dead) return; if (P.ammo <= 0) { P.cd = 0.4; sfx(120, 0.08, 'square', 0.04); return; }
-  P.ammo--; P.cd = 0.42; stats.tiros++; vm.position.z = -0.4; sfx(520, 0.14, 'triangle', 0.07, 180);
-  var d = new THREE.Vector3(); camera.getWorldDirection(d); var m = sph(0.09, stoneMat, camera.position.x + d.x * 0.6, camera.position.y + d.y * 0.6 - 0.08, camera.position.z + d.z * 0.6); scene.add(m);
-  projs.push({ k: 's', m: m, vx: d.x * 64, vy: d.y * 64 + 1.2, vz: d.z * 64, t: 3 });
+  if (P.cd > 0 || P.dead || car) return; if (P.ammo <= 0) { P.cd = 0.4; sfx(120, 0.08, 'square', 0.04); return; }
+  P.ammo--; P.cd = 0.42; P.aimT = 0.9; stats.tiros++; sfx(520, 0.14, 'triangle', 0.07, 180);
+  var o = hand(), d = aimPoint().sub(o), l = d.length() || 1, m = sph(0.09, stoneMat, o.x, o.y, o.z); d.multiplyScalar(1 / l); scene.add(m);
+  projs.push({ k: 's', m: m, vx: d.x * 64, vy: d.y * 64 + 5.5 * l / 64, vz: d.z * 64, t: 3 });
 }
 function throwPo() {
-  if (P.cd > 0 || P.dead || P.po <= 0) return; P.po--; P.cd = 0.6; sfx(300, 0.2, 'sine', 0.07, 600);
-  var d = new THREE.Vector3(); camera.getWorldDirection(d); var m = sph(0.24, poMat, camera.position.x + d.x * 0.6, camera.position.y - 0.1, camera.position.z + d.z * 0.6, 0.8, 0.8, 0.8); scene.add(m);
-  projs.push({ k: 'p', m: m, vx: d.x * 24, vy: d.y * 24 + 6, vz: d.z * 24, t: 4 });
+  if (P.cd > 0 || P.dead || car || P.po <= 0) return; P.po--; P.cd = 0.6; P.aimT = 0.9; sfx(300, 0.2, 'sine', 0.07, 600);
+  var d = new THREE.Vector3(), o = hand(); camera.getWorldDirection(d); var m = sph(0.24, poMat, o.x, o.y, o.z, 0.8, 0.8, 0.8); scene.add(m);
+  projs.push({ k: 'p', m: m, vx: d.x * 24, vy: d.y * 24 + 7, vz: d.z * 24, t: 4 });
 }
 function fire(e, spread, mat) { var ox = e.x, oy = e.y + (e.type === 'C' ? 3.4 : 1.7), oz = e.z, dx = P.x - ox, dy = (P.y + P.eye - 0.5) - oy, dz = P.z - oz, l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1, c = Math.cos(spread), s = Math.sin(spread), vx = (dx * c - dz * s) / l, vz = (dx * s + dz * c) / l, m = sph(0.3, mat || fireMat, ox, oy, oz); scene.add(m); projs.push({ k: 'f', m: m, vx: vx * 17, vy: dy / l * 17, vz: vz * 17, t: 4.5, dmg: e.dmg }); sfx(240, 0.2, 'sawtooth', 0.04, 120); }
 function boom(x, y, z) { burst(x, y + 0.5, z, 0x5ad4e6, 50, 10); burst(x, y + 0.5, z, 0xf5c518, 30, 8); sfx(90, 0.5, 'square', 0.1, 30); enemies.forEach(function (e) { if (e.alive && dist2(e.x, e.z, x, z) < 9) damage(e, e.type === 'C' ? 60 : 90); }); }
@@ -714,25 +767,53 @@ function updEnemies(dt) {
   $('alerta').hidden = !seen;
   $('boss').hidden = !(TOCA.alert && cuca.alive); if (TOCA.alert) $('bossB').style.width = Math.max(0, cuca.hp / cuca.max * 100) + '%';
 }
-function updPlayer(dt) {
-  var f = (K.KeyW || K.ArrowUp ? 1 : 0) - (K.KeyS || K.ArrowDown ? 1 : 0) + T.f, s = (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0) + T.s, l = Math.sqrt(f * f + s * s);
-  if (l > 1) { f /= l; s /= l; }
-  var run = (K.ShiftLeft || K.ShiftRight || l > 1.05 || T.run) && !P.crouch && f > 0, inWater = P.y < WATER - 0.25, sp = (P.crouch ? 3.4 : run ? P.run : 7) * (inWater ? 0.55 : 1);
-  var sy = Math.sin(P.yaw), cy = Math.cos(P.yaw), nx = P.x + (-sy * f + cy * s) * sp * dt, nz = P.z + (-cy * f - sy * s) * sp * dt;
-  // trees
-  var gx = Math.floor(nx / 20), gz = Math.floor(nz / 20);
-  for (var a = gx - 1; a <= gx + 1; a++) for (var b = gz - 1; b <= gz + 1; b++) { var cell = treeGrid[a + ',' + b]; if (!cell) continue; for (var i = 0; i < cell.length; i += 3) { var dx = nx - cell[i], dz = nz - cell[i + 1], rr = cell[i + 2] + 0.35, d2 = dx * dx + dz * dz; if (d2 < rr * rr && d2 > 0.0001) { var d = Math.sqrt(d2); nx = cell[i] + dx / d * rr; nz = cell[i + 1] + dz / d * rr; } } }
-  // house block
-  if (nx > -8.6 && nx < 8.6 && nz > -12.6 && nz < -3.4) { if (P.z >= -3.4) nz = -3.4; else if (P.z <= -12.6) nz = -12.6; else nx = P.x > 0 ? 8.6 : -8.6; }
+// trees, the house, the edge of the map and the Cuca's barrier, for a walker or a truck of radius rad
+function collide(nx, nz, rad) {
+  var hit = false, gx = Math.floor(nx / 20), gz = Math.floor(nz / 20);
+  for (var a = gx - 1; a <= gx + 1; a++) for (var b = gz - 1; b <= gz + 1; b++) { var cell = treeGrid[a + ',' + b]; if (!cell) continue; for (var i = 0; i < cell.length; i += 3) { var dx = nx - cell[i], dz = nz - cell[i + 1], rr = cell[i + 2] + rad, d2 = dx * dx + dz * dz; if (d2 < rr * rr && d2 > 0.0001) { var d = Math.sqrt(d2); nx = cell[i] + dx / d * rr; nz = cell[i + 1] + dz / d * rr; hit = true; } } }
+  var hx = 8.25 + rad, z0 = -12.25 - rad, z1 = -3.75 + rad;
+  if (nx > -hx && nx < hx && nz > z0 && nz < z1) { hit = true; if (P.z >= z1) nz = z1; else if (P.z <= z0) nz = z0; else nx = P.x > 0 ? hx : -hx; }
   var dc = Math.sqrt(nx * nx + nz * nz); if (dc > 240) { nx *= 240 / dc; nz *= 240 / dc; }
-  if (barrier.visible) { var db = dist2(nx, nz, TOCA.x, TOCA.z); if (db < 34.5) { nx = TOCA.x + (nx - TOCA.x) / db * 34.5; nz = TOCA.z + (nz - TOCA.z) / db * 34.5; if (time - toldBarrier > 12) { toldBarrier = time; say('Emília', 'Feitiço de jacaroa. Só cai com os quatro soltos. Vamos buscar o pessoal.'); } } }
-  P.x = nx; P.z = nz;
-  var g = GH(P.x, P.z, P.y); P.vy -= 26 * dt; P.y += P.vy * dt; if (P.y <= g) { P.y = g; P.vy = 0; P.ground = true; } else P.ground = false;
-  if ((K.Space || T.jump) && P.ground) { P.vy = P.jump; P.ground = false; T.jump = false; }
-  var te = P.crouch ? 1.05 : 1.7; P.eye += (te - P.eye) * Math.min(1, dt * 10);
-  if (l > 0.1 && P.ground) P.bob += dt * sp * 1.5;
-  camera.position.set(P.x, P.y + P.eye + Math.sin(P.bob) * 0.045, P.z); camera.rotation.set(P.pitch, P.yaw, 0);
-  P.cd -= dt; if (firing) shoot(); vm.position.z += (-0.5 - vm.position.z) * Math.min(1, dt * 12); vm.position.y = -0.21 + Math.sin(P.bob) * 0.006;
+  if (barrier.visible) { var db = dist2(nx, nz, TOCA.x, TOCA.z), lim = 34.2 + rad; if (db < lim) { hit = true; nx = TOCA.x + (nx - TOCA.x) / db * lim; nz = TOCA.z + (nz - TOCA.z) / db * lim; if (time - toldBarrier > 12) { toldBarrier = time; say('Emília', 'Feitiço de jacaroa. Só cai com os quatro soltos. Vamos buscar o pessoal.'); } } }
+  return [nx, nz, hit];
+}
+function turn(from, to, k) { var d = to - from; while (d > Math.PI) d -= 6.2832; while (d < -Math.PI) d += 6.2832; return from + d * Math.min(1, k); }
+function updCar(dt, f, s) {
+  var c = car, onBridge = Math.abs(c.z - BR.z) < BR.w && Math.abs(c.x - BR.x) < BR.half, wet = !onBridge && H(c.x, c.z) < WATER - 0.3, max = wet ? 4 : (onBridge || roadD(c.x, c.z) < 5) ? 27 : 17;
+  if (f > 0.1) c.v += 13 * f * dt; else if (f < -0.1) c.v += (c.v > 0 ? 28 : 9) * f * dt; else c.v -= c.v * 0.9 * dt;
+  if (c.v > max) c.v = Math.max(max, c.v - 30 * dt); if (c.v < -7) c.v = -7;
+  c.h -= s * 1.7 * dt * Math.max(-1, Math.min(1, c.v / 7));
+  var r = collide(c.x + Math.sin(c.h) * c.v * dt, c.z + Math.cos(c.h) * c.v * dt, 1.3);
+  if (r[2] && Math.abs(c.v) > 3) { sfx(90, 0.2, 'square', 0.08, 50); c.v *= -0.25; }
+  c.x = r[0]; c.z = r[1]; c.y = Math.max(GH(c.x, c.z, c.y + 1), WATER - 0.5);
+  for (var i = 0; i < enemies.length; i++) { var e = enemies[i]; if (e.alive && Math.abs(c.v) > 6 && dist2(e.x, e.z, c.x, c.z) < 2.2) { damage(e, Math.abs(c.v) * 6); c.v *= 0.7; } }
+  P.x = c.x; P.z = c.z; P.y = c.y; P.vy = 0; P.ground = true;
+  if (Math.abs(c.v) > 3 && time - lastLook > 1.2) P.yaw = turn(P.yaw, c.h + Math.PI, dt * 2.4);
+  placeCar(c); if (engine) engine.o.frequency.value = 42 + Math.abs(c.v) * 5;
+}
+function updPlayer(dt) {
+  var f = (K.KeyW || K.ArrowUp ? 1 : 0) - (K.KeyS || K.ArrowDown ? 1 : 0) + T.f, s = (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0) + T.s, l = Math.sqrt(f * f + s * s), u = hero.userData;
+  if (car) updCar(dt, f, s); else {
+    if (l > 1) { f /= l; s /= l; }
+    var run = (K.ShiftLeft || K.ShiftRight || l > 1.05 || T.run) && !P.crouch && f > 0, inWater = P.y < WATER - 0.25, sp = (P.crouch ? 3.4 : run ? P.run : 7) * (inWater ? 0.55 : 1);
+    var sy = Math.sin(P.yaw), cy = Math.cos(P.yaw), vx = -sy * f + cy * s, vz = -cy * f - sy * s, r = collide(P.x + vx * sp * dt, P.z + vz * sp * dt, 0.35);
+    P.x = r[0]; P.z = r[1];
+    var g = GH(P.x, P.z, P.y); P.vy -= 26 * dt; P.y += P.vy * dt; if (P.y <= g) { P.y = g; P.vy = 0; P.ground = true; } else P.ground = false;
+    if ((K.Space || T.jump) && P.ground) { P.vy = P.jump; P.ground = false; T.jump = false; }
+    P.eye += ((P.crouch ? 1.05 : 1.7) - P.eye) * Math.min(1, dt * 10);
+    if (l > 0.1 && P.ground) P.bob += dt * sp * 1.3;
+    // the body turns to where it walks; when the slingshot is up, to where it aims
+    if (l > 0.1) P.face = Math.atan2(vx, vz); if (P.aimT > 0) { P.aimT -= dt; P.face = P.yaw + Math.PI; }
+    hero.rotation.y = turn(hero.rotation.y, P.face, dt * 12);
+    var amp = l > 0.1 && P.ground ? (run ? 1 : 0.6) : 0, sw = Math.sin(P.bob) * amp, air = P.ground ? 0 : 0.5;
+    u.legL.rotation.x = sw + air; u.legR.rotation.x = -sw - air * 0.6; u.armL.rotation.x = -sw * 0.8; u.armR.rotation.x = P.aimT > 0 ? -1.5 - P.pitch : sw * 0.8;
+    hero.position.set(P.x, P.y, P.z); hero.scale.y = 0.92 * P.eye / 1.7; hero.visible = !P.dead;
+    P.cd -= dt; if (firing) shoot();
+  }
+  // third-person camera: over the right shoulder on foot, further back in the truck
+  var back = car ? 9 : 4.4, upo = car ? 3 : 1.85, side = car ? 0 : 0.8, cp = Math.cos(P.pitch), dx = -Math.sin(P.yaw) * cp, dy = Math.sin(P.pitch), dz = -Math.cos(P.yaw) * cp;
+  var cx = P.x + Math.cos(P.yaw) * side - dx * back, cz = P.z - Math.sin(P.yaw) * side - dz * back, cyy = P.y + upo * (car ? 1 : P.eye / 1.7) - dy * back;
+  camera.position.set(cx, Math.max(cyy, GH(cx, cz, cyy + 3) + 0.4, WATER + 0.3), cz); camera.rotation.set(P.pitch, P.yaw, 0);
   if (P.qcd > 0) P.qcd -= dt;
   if (time - P.lastHurt > 6 && P.hp < P.max) P.hp = Math.min(P.max, P.hp + 7 * dt);
   if (P.ammo < 5) { P.regen = (P.regen || 0) + dt; if (P.regen > 3) { P.regen = 0; P.ammo++; } }
@@ -752,11 +833,14 @@ function updWorld(dt) {
     if (o.goHome > 0) { o.goHome -= dt; o.fig.position.y = o.h + Math.abs(Math.sin(time * 7)) * 0.3; o.fig.rotation.y += dt * 3; if (o.goHome <= 0) { var c = AMIGO[o.amigo].casa; burst(o.fig.position.x, o.h + 1, o.fig.position.z, 0xf5c518, 24, 6); o.fig.position.set(c[0], H(c[0], c[1]), c[1]); o.fig.rotation.y = 0; } }
     if (!o.freed) o.beamMat.opacity = 0.16 + Math.sin(time * 2 + o.x) * 0.05;
   });
+  if (car) promptAct = { label: 'Descer · ' + Math.round(Math.abs(car.v) * 3.6) + ' km/h', fn: exitCar };
+  else cars.forEach(function (c) { if (!promptAct && dist2(P.x, P.z, c.x, c.z) < 3.8) promptAct = { label: 'Dirigir a caminhonete', fn: function () { enterCar(c); } }; });
   for (var ti = 0; !promptAct && ti < TALK.length; ti++) { var tk = TALK[ti]; if (dist2(P.x, P.z, tk.x, tk.z) < tk.r && (!tk.ok || tk.ok())) promptAct = tk; }
   $('prompt').hidden = !promptAct; if (promptAct) $('prompt').textContent = (touchOn ? 'Toque em Ação: ' : 'E — ') + promptAct.label; if (touchOn) $('tAct').hidden = !promptAct;
   // Emília tags along; so does the Saci once caught
   for (var fi = 0; fi < followers.length; fi++) {
     var fo = followers[fi]; if (!fo.on) continue;
+    if (car) { var rs = fi ? 0.45 : -0.45; fo.m.position.set(car.x - Math.sin(car.h) * 1.4 + Math.cos(car.h) * rs, car.y + 1.1, car.z - Math.cos(car.h) * 1.4 - Math.sin(car.h) * rs); fo.m.rotation.y = car.h; continue; }
     var ex = P.x - Math.sin(P.yaw) * fo.f + Math.cos(P.yaw) * fo.s, ez = P.z - Math.cos(P.yaw) * fo.f - Math.sin(P.yaw) * fo.s, ep = fo.m.position, mv = dist2(ep.x, ep.z, ex, ez);
     if (mv > 40) { ep.x = ex; ep.z = ez; } else if (mv > 0.4) { ep.x += (ex - ep.x) * Math.min(1, dt * 2.6); ep.z += (ez - ep.z) * Math.min(1, dt * 2.6); }
     ep.y = Math.max(GH(ep.x, ep.z, P.y), WATER) + (mv > 0.5 || fi ? Math.abs(Math.sin(time * (fi ? 7 : 11))) * 0.22 : 0); fo.m.rotation.y = Math.atan2(P.x - ep.x, P.z - ep.z);
@@ -775,7 +859,7 @@ function interact() { if (promptAct && state === 'play') promptAct.fn(); }
 
 /* ---------- input ---------- */
 var K = {}, T = { f: 0, s: 0, jump: false, run: false }, firing = false, dragLook = false, dragging = false, touchOn = coarse;
-function look(dx, dy, k) { P.yaw -= dx * k; P.pitch = Math.max(-1.45, Math.min(1.45, P.pitch - dy * k)); }
+function look(dx, dy, k) { P.yaw -= dx * k; P.pitch = Math.max(-1.2, Math.min(0.85, P.pitch - dy * k)); lastLook = time; }
 document.addEventListener('keydown', function (e) {
   if (state === 'play' && (e.code === 'Space' || e.code.indexOf('Arrow') === 0)) e.preventDefault();
   if (e.repeat) return; K[e.code] = true; if (state !== 'play') { if (state === 'pause' && e.code === 'KeyP') resume(); return; }
@@ -809,15 +893,15 @@ function start() {
   if (touchOn) { ['touch', 'tFire', 'tJump', 'tPo', 'tCrouch'].forEach(function (i) { $(i).hidden = false; }); if (perks.quindim) $('tQ').hidden = false; } else lock();
   if (!start.done) { start.done = true; if (OUT.some(function (o) { return o.freed; })) say('Emília', 'Voltou! Ainda tem serviço. Olha a fumaça roxa.'); else { say('Dona Benta', 'Pedrinho, a Cuca enfeitiçou o Sítio. Levou Narizinho, o Visconde, o Rabicó e até o Quindim.'); say('Emília', 'Eu fiquei porque boneca de pano não cabe em gaiola de bruxa. Pega o bodoque e segue a fumaça roxa!'); } }
 }
-function pause() { if (state !== 'play') return; state = 'pause'; firing = false; showOnly('pause'); if (document.exitPointerLock && document.pointerLockElement) document.exitPointerLock(); }
-function resume() { if (state !== 'pause') return; showOnly(null); state = 'play'; lock(); }
+function pause() { if (state !== 'play') return; state = 'pause'; firing = false; if (engine) engine.g.gain.value = 0; showOnly('pause'); if (document.exitPointerLock && document.pointerLockElement) document.exitPointerLock(); }
+function resume() { if (state !== 'pause') return; showOnly(null); state = 'play'; if (engine) engine.g.gain.value = 0.022; lock(); }
 function resetAll() { try { localStorage.removeItem(KEY); } catch (e) {} location.reload(); }
 $('bStart').addEventListener('click', start); $('bResume').addEventListener('click', resume); $('bReset').addEventListener('click', resetAll); $('bAgain').addEventListener('click', resetAll);
 $('bRoam').addEventListener('click', function () { showOnly(null); state = 'play'; lock(); });
-if (touchOn) $('ajuda').innerHTML = '<span><kbd>Esquerda</kbd>arraste para andar (até o fim para correr)</span><span><kbd>Direita</kbd>arraste para mirar</span><span><kbd>Botões</kbd>atirar, pó, pulo, agachar</span>';
+if (touchOn) $('ajuda').innerHTML = '<span><kbd>Esquerda</kbd>arraste para andar (até o fim para correr)</span><span><kbd>Direita</kbd>arraste para mirar</span><span><kbd>Botões</kbd>atirar, pó, pulo, agachar</span><span><kbd>Ação</kbd>falar, soltar, dirigir</span>';
 (function () { var s = load(); (s.f || []).forEach(function (id) { OUT.forEach(function (o) { if (o.id === id) liberate(o, true); }); }); if (s.w) { won = true; cuca.alive = false; cuca.mesh.visible = false; } flags.pen = !!s.p; if (s.s) gotSaci(true); if ((s.f || []).length) { $('bStart').textContent = 'Continuar'; $('bReset').hidden = false; } hudFriends(); })();
 
-function resize() { var w = canvas.clientWidth || window.innerWidth, h = canvas.clientHeight || window.innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = w < h ? 88 : 75; camera.updateProjectionMatrix(); }
+function resize() { var w = canvas.clientWidth || window.innerWidth, h = canvas.clientHeight || window.innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = w < h ? 80 : 65; camera.updateProjectionMatrix(); }
 window.addEventListener('resize', resize); resize();
 
 var last = performance.now(), frame = 0;
@@ -830,11 +914,12 @@ function loop(now) {
     updEnemies(dt); updProjs(dt); updWorld(dt); hudSubs(dt);
     if (P.winT > 0) { P.winT -= dt; if (P.winT <= 0) { state = 'end'; firing = false; if (document.exitPointerLock && document.pointerLockElement) document.exitPointerLock(); $('endT').textContent = 'Você levou ' + Math.floor(stats.t / 60) + ' min ' + Math.floor(stats.t % 60) + ' s, gastou ' + stats.tiros + ' pedras e mandou ' + stats.baixas + ' capangas de volta pro feitiço. Narizinho, o Visconde, Rabicó e o Quindim já estão na varanda.'; showOnly('end'); } }
     if (frame++ % 4 === 0) { drawMap(); hudObjective(); hudStats(); discover(); }
-  } else if (state === 'menu') { time += dt; camera.position.set(Math.sin(time * 0.07) * 46, H(0, 0) + 15, Math.cos(time * 0.07) * 46 + 4); camera.lookAt(0, H(0, 0) + 3, -4); }
+  } else if (state === 'menu') { time += dt; hero.position.set(P.x, P.y, P.z); camera.position.set(Math.sin(time * 0.07) * 46, H(0, 0) + 15, Math.cos(time * 0.07) * 46 + 4); camera.lookAt(0, H(0, 0) + 3, -4); }
+  sky.position.copy(camera.position); sun.position.set(P.x + SD.x * 200, P.y + SD.y * 200, P.z + SD.z * 200); sun.target.position.set(P.x, P.y, P.z);
   renderer.render(scene, camera);
 }
 P.y = H(P.x, P.z);
-window.__sitio = { scene: scene, camera: camera, P: P, OUT: OUT, TOCA: TOCA, enemies: enemies, perks: perks, H: H, get state() { return state; }, get cuca() { return cuca; }, damage: damage, liberate: liberate, throwPo: throwPo, shoot: shoot, call: callQuindim };
+window.__sitio = { cars: cars, enterCar: enterCar, exitCar: exitCar, get car() { return car; }, scene: scene, camera: camera, P: P, OUT: OUT, TOCA: TOCA, enemies: enemies, perks: perks, H: H, get state() { return state; }, get cuca() { return cuca; }, damage: damage, liberate: liberate, throwPo: throwPo, shoot: shoot, call: callQuindim };
 requestAnimationFrame(loop);
 })();
 </script>
