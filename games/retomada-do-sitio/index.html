@@ -242,7 +242,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarse ? 1.5 : 2))
 renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 function lin(hex) { return new THREE.Color(hex).convertSRGBToLinear(); }
-var scene = new THREE.Scene(), HAZE = lin(0xe9e6d8);
+var scene = new THREE.Scene(), HAZE = lin(0xcfe3f1);
 scene.fog = new THREE.Fog(HAZE, 110, 380);
 var camera = new THREE.PerspectiveCamera(65, 1, 0.2, 900);
 camera.rotation.order = 'YXZ';
@@ -255,8 +255,8 @@ sun.castShadow = true; sun.shadow.mapSize.set(coarse ? 1024 : 2048, coarse ? 102
 scene.add(sun); scene.add(sun.target);
 var sky = new THREE.Group();
 (function () {
-  var g = new THREE.SphereGeometry(800, 24, 14), p = g.attributes.position, col = new Float32Array(p.count * 3), top = lin(0x3a7fd6), c = new THREE.Color();
-  for (var i = 0; i < p.count; i++) { var t = Math.pow(Math.max(0, p.getY(i) / 800), 0.38); c.copy(HAZE).lerp(top, t); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
+  var g = new THREE.SphereGeometry(800, 32, 28), p = g.attributes.position, col = new Float32Array(p.count * 3), top = lin(0x3f86dc), c = new THREE.Color();
+  for (var i = 0; i < p.count; i++) { var t = Math.pow(Math.max(0, p.getY(i) / 800), 0.62); c.copy(HAZE).lerp(top, t); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   sky.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })));
   var disc = new THREE.Mesh(new THREE.SphereGeometry(26, 12, 8), new THREE.MeshBasicMaterial({ color: 0xfff4d0, fog: false, toneMapped: false })); disc.position.copy(SD).multiplyScalar(760); sky.add(disc);
@@ -281,9 +281,29 @@ function board(text, w, h, bg, fg) {
   var tx = new THREE.CanvasTexture(cv); tx.encoding = THREE.sRGBEncoding;
   var a = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tx })), b = a.clone(); a.position.z = 0.02; b.position.z = -0.02; b.rotation.y = Math.PI; return grp(a, b);
 }
-function casa(w, h, d, cor, roofC, doorC) {
-  var rf = cone((w + 1.2) / 1.414, h * 0.7, M(roofC), 0, h + h * 0.35, 0, 4), hold = grp(rf), dh = Math.min(1.9, h * 0.8); rf.rotation.y = Math.PI / 4; hold.scale.z = (d + 1.2) / (w + 1.2);
-  return grp(box(w, h, d, M(cor), 0, h / 2, 0), hold, box(0.9, dh, 0.12, M(doorC || 0x2a5db0), 0, dh / 2, d / 2 + 0.03));
+// several primitives baked into one faceted geometry with vertex colours: [geometry, [x,y,z, sx,sy,sz, rx,ry,rz], colour]
+var VM = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }), RMC = {};
+function merge(parts) {
+  var pos = [], col = [], d = new THREE.Object3D(), c = new THREE.Color();
+  parts.forEach(function (p) {
+    var g = p[0].index ? p[0].toNonIndexed() : p[0].clone(), t = p[1]; d.position.set(t[0], t[1], t[2]); d.scale.set(t[3] || 1, t[4] || 1, t[5] || 1); d.rotation.set(t[6] || 0, t[7] || 0, t[8] || 0); d.updateMatrix(); g.applyMatrix4(d.matrix);
+    c.set(p[2] === undefined ? 0xffffff : p[2]).convertSRGBToLinear(); var a = g.attributes.position.array; for (var i = 0; i < a.length; i += 3) { pos.push(a[i], a[i + 1], a[i + 2]); col.push(c.r, c.g, c.b); }
+  });
+  var out = new THREE.BufferGeometry(); out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); out.computeVertexNormals(); return out;
+}
+// four-sided tile roof, ridge along x (w >= d)
+function hipRoof(w, d, h, hex) {
+  var x = w / 2, z = d / 2, r = Math.max(0, x - z), g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute([-x, 0, z, x, 0, z, r, h, 0, -x, 0, z, r, h, 0, -r, h, 0, x, 0, -z, -x, 0, -z, -r, h, 0, x, 0, -z, -r, h, 0, r, h, 0, x, 0, z, x, 0, -z, r, h, 0, -x, 0, -z, -x, 0, z, -r, h, 0], 3)); g.computeVertexNormals();
+  var m = new THREE.Mesh(g, RMC[hex] || (RMC[hex] = new THREE.MeshStandardMaterial({ color: lin(hex), roughness: 0.95, side: THREE.DoubleSide }))); m.castShadow = m.receiveShadow = true; return m;
+}
+// a village or farm house: footing band, door and framed windows on the front (+Z), hip roof
+function casa(w, h, d, cor, roofC, doorC, base) {
+  var tr = M(doorC || 0x2456a6), dh = Math.min(2, h * 0.75), rf, g = grp(box(w, h, d, M(cor), 0, h / 2, 0), box(w + 0.06, 0.5, d + 0.06, M(base || 0x7b6a58), 0, 0.25, 0), box(0.95, dh, 0.14, tr, 0, dh / 2, d / 2 + 0.04));
+  if (w >= d) rf = hipRoof(w + 1.3, d + 1.3, h * 0.55, roofC); else { rf = hipRoof(d + 1.3, w + 1.3, h * 0.55, roofC); rf.rotation.y = Math.PI / 2; }
+  rf.position.y = h; g.add(rf);
+  if (w > 4) [-1, 1].forEach(function (sx) { g.add(box(0.95, 1.05, 0.1, tr, sx * w * 0.3, h * 0.56, d / 2 + 0.04), box(0.68, 0.78, 0.12, M(0x22303a), sx * w * 0.3, h * 0.56, d / 2 + 0.05)); });
+  return g;
 }
 function place(o, x, z, ry, dy) { o.position.set(x, H(x, z) + (dy || 0), z); if (ry) o.rotation.y = ry; scene.add(o); return o; }
 function pen(cx, cz, sz) { var y = H(cx, cz), w = M(0x8a6238), c = [[-1, -1], [1, -1], [1, 1], [-1, 1]]; for (var k = 0; k < 4; k++) { var p = c[k], q = c[(k + 1) % 4], ax = cx + p[0] * sz / 2, az = cz + p[1] * sz / 2, bx = cx + q[0] * sz / 2, bz = cz + q[1] * sz / 2; scene.add(box(0.16, 1.1, 0.16, w, ax, y + 0.55, az), beam(ax, y + 0.9, az, bx, y + 0.9, bz, 0.05, w), beam(ax, y + 0.5, az, bx, y + 0.5, bz, 0.05, w)); } }
@@ -294,9 +314,10 @@ function pen(cx, cz, sz) { var y = H(cx, cz), w = M(0x8a6238), c = [[-1, -1], [1
   var p = g.attributes.position, col = new Float32Array(p.count * 3);
   for (var i = 0; i < p.count; i++) {
     var x = p.getX(i), z = p.getZ(i), h = H(x, z); p.setY(i, h);
-    var n = (Math.sin(x * 0.31) * Math.cos(z * 0.27) + 1) * 0.05, r = 0.25 + n, gg = 0.45 + n, b = 0.17;
+    var n = (Math.sin(x * 0.31) * Math.cos(z * 0.27) + 1) * 0.05, r = 0.25 + n, gg = 0.45 + n, b = 0.17, n2 = Math.sin(x * 0.07 + z * 0.05) * Math.cos(z * 0.06 - x * 0.03);
+    if (n2 > 0.25) { var k2 = Math.min(1, (n2 - 0.25) * 2) * 0.7; r += (0.47 - r) * k2; gg += (0.5 - gg) * k2; b += (0.2 - b) * k2; } else if (n2 < -0.35) { var k3 = Math.min(1, (-0.35 - n2) * 2.5) * 0.6; r += (0.15 - r) * k3; gg += (0.34 - gg) * k3; b += (0.13 - b) * k3; }
     if (h < 0.1) { r = 0.78; gg = 0.71; b = 0.5; }
-    else if (h > 26) { r = 0.42; gg = 0.5; b = 0.6; }
+    else if (h > 26) { r = 0.3 + n; gg = 0.46; b = 0.27; }
     else if (h > 15) { r = 0.4 + n; gg = 0.5; b = 0.24; }
     for (var k = 0; k < ZONES.length; k++) {
       var zn = ZONES[k]; if (!zn.c) continue; var t = 1 - smooth(zn.r * 0.7, zn.r * 1.2, dist2(x, z, zn.x, zn.z));
@@ -315,31 +336,56 @@ function pen(cx, cz, sz) { var y = H(cx, cz), w = M(0x8a6238), c = [[-1, -1], [1
   var ground = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, map: nt })); ground.receiveShadow = true; scene.add(ground);
   var w = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), new THREE.MeshStandardMaterial({ color: lin(0x2f8fb8), transparent: true, opacity: 0.8, roughness: 0.12, metalness: 0.25 }));
   w.rotation.x = -Math.PI / 2; w.position.y = WATER; scene.add(w);
-  for (var c = 0; c < 14; c++) { var cl = sph(9, new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }), (rnd() - 0.5) * 600, 110 + rnd() * 40, (rnd() - 0.5) * 600, 2 + rnd() * 2, 0.5, 1.4 + rnd()); cl.castShadow = false; scene.add(cl); }
+  var wm = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }), c, a;
+  for (c = 0; c < 18; c++) { var cl = grp(sph(9, wm, 0, 0, 0, 2.2, 0.55, 1.5), sph(9, wm, 13, 2, 3, 1.4, 0.6, 1.1), sph(9, wm, -12, 1, -2, 1.5, 0.5, 1.2)); cl.traverse(function (o) { o.castShadow = false; }); cl.position.set((rnd() - 0.5) * 900, 130 + rnd() * 60, (rnd() - 0.5) * 900); cl.rotation.y = rnd() * 3; scene.add(cl); }
+  // the blue ranges on the horizon, as round the Paraíba valley
+  var mm = [new THREE.MeshBasicMaterial({ color: 0x7c9cc2, fog: false }), new THREE.MeshBasicMaterial({ color: 0xa5bdd6, fog: false })];
+  for (c = 0; c < 36; c++) { a = c / 36 * 6.2832 + rnd() * 0.1; var far = c % 2 ? 640 : 520, hg = 90 + rnd() * 110, mt = new THREE.Mesh(new THREE.ConeGeometry(120 + rnd() * 90, hg, 5), mm[c % 2]); mt.position.set(Math.cos(a) * far, hg / 2 - 28, Math.sin(a) * far); mt.rotation.y = rnd() * 3; scene.add(mt); }
 })();
 
-/* ---------- trees: open pasture, thick mata at the Capoeirão, bamboo where the Saci lives ---------- */
+/* ---------- vegetation: pasture trees, ipês, palms, araucárias, banana clumps, bush, grass, flowers, rocks, bamboo ---------- */
 var treeGrid = {};
+function gridAdd(x, z, r) { var key = Math.floor(x / 20) + ',' + Math.floor(z / 20); (treeGrid[key] || (treeGrid[key] = [])).push(x, z, r); }
 (function () {
-  var N = 780, tr = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.25, 0.42, 3.2, 6), M(0x6b4a2b), N),
-    fo = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(2.3, 0), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, flatShading: true }), N),
-    d = new THREE.Object3D(), c = new THREE.Color(), n = 0, guard = 0, x, z, k, h, s;
-  while (n < N && guard++ < 12000) {
-    var mata = rnd() < 0.24;
-    if (mata) { var a = rnd() * 6.283, rr = 27 + rnd() * 48; x = 175 + Math.cos(a) * rr; z = -60 + Math.sin(a) * rr; } else { x = (rnd() - 0.5) * 500; z = (rnd() - 0.5) * 500; }
-    var ok = Math.sqrt(x * x + z * z) < 248 && Math.abs(x - riverX(z)) > 11 && roadD(x, z) > 4.5;
-    for (k = 0; ok && k < ZONES.length; k++) if (dist2(x, z, ZONES[k].x, ZONES[k].z) < ZONES[k].r * 1.25) ok = false;
-    if (!ok) continue;
-    h = H(x, z); if (h < 0.3) continue;
-    s = (mata ? 1.2 : 0.8) + rnd() * 0.9;
-    d.position.set(x, h + 1.6 * s, z); d.scale.set(s, s, s); d.rotation.set(0, rnd() * 6, 0); d.updateMatrix(); tr.setMatrixAt(n, d.matrix);
-    d.position.y = h + 4.4 * s; d.scale.set(s, s * (0.8 + rnd() * 0.5), s); d.updateMatrix(); fo.setMatrixAt(n, d.matrix);
-    var q = rnd(); if (mata) c.setRGB(0.07 + rnd() * 0.06, 0.26 + rnd() * 0.12, 0.1); else if (q < 0.08) c.setRGB(0.98, 0.8, 0.12); else if (q < 0.12) c.setRGB(0.8, 0.45, 0.75); else c.setRGB(0.14 + rnd() * 0.12, 0.38 + rnd() * 0.2, 0.12);
-    c.convertSRGBToLinear(); fo.setColorAt(n, c);
-    var key = Math.floor(x / 20) + ',' + Math.floor(z / 20); (treeGrid[key] || (treeGrid[key] = [])).push(x, z, 0.55 * s);
-    n++;
+  var d = new THREE.Object3D(), i, k, x, z, s, h, n, guard, q, a, rr;
+  function ico(r) { return new THREE.IcosahedronGeometry(r, 0); }
+  function cylg(a1, b1, hh, sg) { return new THREE.CylinderGeometry(a1, b1, hh, sg || 6); }
+  function coneg(r, hh, sg) { return new THREE.ConeGeometry(r, hh, sg || 4); }
+  function tint(r, g, b) { return new THREE.Color(r, g, b).convertSRGBToLinear(); }
+  function free(x, z, pad, roadPad) { if (Math.sqrt(x * x + z * z) > 247 || Math.abs(x - riverX(z)) < pad || roadD(x, z) < roadPad) return false; for (var j = 0; j < ZONES.length; j++) if (dist2(x, z, ZONES[j].x, ZONES[j].z) < ZONES[j].r * (ZONES[j].c ? 1.2 : 0.45)) return false; return true; }
+  // list items: [x, z, scale, tint, turn, stretch]
+  function inst(geo, list, shadow) { if (!list.length) return; var m = new THREE.InstancedMesh(geo, VM, list.length); list.forEach(function (t, j) { d.position.set(t[0], H(t[0], t[1]) - 0.06, t[1]); d.scale.set(t[2], t[2] * (t[5] || 1), t[2]); d.rotation.set(0, t[4] || 0, 0); d.updateMatrix(); m.setMatrixAt(j, d.matrix); m.setColorAt(j, t[3]); }); m.castShadow = shadow !== false; m.receiveShadow = true; scene.add(m); }
+  function treeGeo(c1, c2, c3) { return merge([[cylg(0.26, 0.46, 3.6), [0, 1.8, 0], 0x6b4a2b], [ico(2.3), [0, 4.9, 0], c1], [ico(1.7), [1.6, 4.2, 0.4], c2], [ico(1.6), [-1.4, 4.4, -0.6], c3], [ico(1.5), [0.2, 6.3, 0.3], c2], [ico(1.3), [-0.3, 4.1, 1.5], c1]]); }
+  var palmParts = [[cylg(0.14, 0.22, 7), [0, 3.5, 0], 0x8a7a5a], [ico(0.16), [0.2, 6.6, 0.1], 0x5a4020], [ico(0.16), [-0.15, 6.55, 0.18], 0x5a4020]], banParts = [[cylg(0.13, 0.2, 1.8), [0, 0.9, 0], 0x9ab85a]];
+  for (k = 0; k < 8; k++) { a = k * 0.7854; palmParts.push([coneg(0.6, 3.6), [-Math.cos(a) * 1.55, 6.75, Math.sin(a) * 1.55, 0.16, 1, 1, 0, a, 1.95 - (k % 2) * 0.35], k % 2 ? 0x4f9a3a : 0x3c8532]); }
+  for (k = 0; k < 6; k++) { a = k * 1.047; rr = 0.9 + (k % 2) * 0.35; banParts.push([coneg(0.7, 2.4, 5), [-Math.cos(a) * Math.sin(rr) * 1.1, 1.8 + Math.cos(rr) * 1.1, Math.sin(a) * Math.sin(rr) * 1.1, 0.1, 1, 1, 0, a, rr], k % 2 ? 0x4f9a3a : 0x3f8a33]); }
+  var gArau = merge([[cylg(0.2, 0.34, 9), [0, 4.5, 0], 0x5a4636], [coneg(3.2, 1.3, 7), [0, 9.2, 0, 1, 1, 1, Math.PI], 0x2f6b3a], [coneg(2.5, 1.1, 7), [0, 7.9, 0, 1, 1, 1, Math.PI], 0x2a6034], [coneg(1.8, 1, 7), [0, 6.7, 0, 1, 1, 1, Math.PI], 0x2f6b3a]]),
+    gBush = merge([[ico(0.7), [0, 0.5, 0], 0x3f8a33], [ico(0.55), [0.6, 0.4, 0.2], 0x4c9a3a], [ico(0.5), [-0.5, 0.4, -0.3], 0x377a2c]]),
+    gGrass = merge([[coneg(0.07, 0.8, 3), [0, 0.4, 0], 0x6aa53a], [coneg(0.06, 0.65, 3), [0.12, 0.3, 0.05, 1, 1, 1, 0, 0, -0.35], 0x86b84a], [coneg(0.06, 0.6, 3), [-0.1, 0.28, 0.08, 1, 1, 1, 0, 0, 0.4], 0x5a9a34], [coneg(0.06, 0.7, 3), [0.02, 0.33, -0.12, 1, 1, 1, 0.4], 0x7ab044], [coneg(0.05, 0.55, 3), [-0.05, 0.26, 0.14, 1, 1, 1, -0.45], 0x86b84a]]),
+    gFlower = merge([[coneg(0.03, 0.45, 3), [0, 0.22, 0], 0x4c9a3a], [ico(0.11), [0, 0.5, 0]], [coneg(0.03, 0.35, 3), [0.14, 0.17, 0.06], 0x4c9a3a], [ico(0.09), [0.14, 0.4, 0.06]]]),
+    gRock = merge([[ico(0.8), [0, 0.3, 0, 1, 0.6, 0.85], 0x8a8d8f], [ico(0.45), [0.7, 0.15, 0.3, 1, 0.6, 1], 0x777b80]]);
+  var trees = [], ipeY = [], ipeP = [], ipeR = [], arau = [], palms = [], bananas = [], bushes = [], grass = [], flowers = [], rocks = [];
+  for (n = 0, guard = 0; n < 660 && guard < 16000; guard++) {
+    var mata = rnd() < 0.26;
+    if (mata) { a = rnd() * 6.283; rr = 27 + rnd() * 48; x = 175 + Math.cos(a) * rr; z = -60 + Math.sin(a) * rr; } else { x = (rnd() - 0.5) * 500; z = (rnd() - 0.5) * 500; }
+    if (!free(x, z, 11, 4.5)) continue; h = H(x, z); if (h < 0.3) continue;
+    s = (mata ? 1.15 : 0.75) + rnd() * 0.85; q = rnd();
+    var it = [x, z, s, mata ? tint(0.5 + rnd() * 0.15, 0.68 + rnd() * 0.15, 0.55) : tint(0.85 + rnd() * 0.3, 0.85 + rnd() * 0.3, 0.8 + rnd() * 0.2), rnd() * 6.28, 0.85 + rnd() * 0.4];
+    if (!mata && h > 12.5 && q < 0.5) arau.push(it); else if (!mata && q < 0.06) ipeY.push(it); else if (!mata && q < 0.1) ipeP.push(it); else if (!mata && q < 0.13) ipeR.push(it); else trees.push(it);
+    gridAdd(x, z, 0.55 * s); n++;
   }
-  tr.count = fo.count = n; fo.instanceColor.needsUpdate = true; tr.castShadow = fo.castShadow = true; fo.receiveShadow = true; scene.add(tr); scene.add(fo);
+  for (n = 0, guard = 0; n < 120 && guard < 6000; guard++) { z = (rnd() - 0.5) * 480; x = riverX(z) + (rnd() < 0.5 ? -1 : 1) * (13 + rnd() * 34); if (!free(x, z, 12, 4)) continue; if (H(x, z) < 0.4) continue; s = 0.8 + rnd() * 0.5; palms.push([x, z, s, tint(1, 1, 1), rnd() * 6.28]); gridAdd(x, z, 0.3); n++; }
+  [[-11, 33], [11, 33], [-22, 2], [22, -2], [ARRAIAL.x - 7, ARRAIAL.z - 4], [ARRAIAL.x + 7, ARRAIAL.z - 4], [ARRAIAL.x - 7, ARRAIAL.z + 10], [ARRAIAL.x + 7, ARRAIAL.z + 10], [RANCHO.x - 7, RANCHO.z + 2]].forEach(function (pp) { palms.push([pp[0], pp[1], 1.15, tint(1, 1, 1), pp[0]]); gridAdd(pp[0], pp[1], 0.3); });
+  [[RANCHO.x + 6, RANCHO.z - 5], [13, -22], [-21, -14], [ARRAIAL.x + 20, ARRAIAL.z + 16], [62, -84], [-6, -38]].forEach(function (cc) { for (k = 0; k < 6; k++) bananas.push([cc[0] + (rnd() - 0.5) * 6, cc[1] + (rnd() - 0.5) * 6, 0.6 + rnd() * 0.3, tint(1, 1, 1), rnd() * 6.28]); });
+  function ground(x, z, roadPad) { if (Math.sqrt(x * x + z * z) > 246 || roadD(x, z) < roadPad) return false; for (var j = 0; j < ZONES.length; j++) if (ZONES[j].c && dist2(x, z, ZONES[j].x, ZONES[j].z) < ZONES[j].r * 1.02) return false; return H(x, z) > 0.25; }
+  for (n = 0, guard = 0; n < 460 && guard < 6000; guard++) { x = (rnd() - 0.5) * 500; z = (rnd() - 0.5) * 500; if (!free(x, z, 7, 3.5) || H(x, z) < 0.3) continue; bushes.push([x, z, 0.7 + rnd() * 1.1, tint(0.8 + rnd() * 0.35, 0.85 + rnd() * 0.3, 0.8), rnd() * 6.28]); n++; }
+  for (n = 0, guard = 0; n < 3200 && guard < 20000; guard++) { x = (rnd() - 0.5) * 500; z = (rnd() - 0.5) * 500; if (!ground(x, z, 2.7)) continue; grass.push([x, z, 0.45 + rnd() * 0.7, tint(0.8 + rnd() * 0.4, 0.85 + rnd() * 0.3, 0.7 + rnd() * 0.3), rnd() * 6.28]); n++; }
+  var petals = [[1, 0.85, 0.2], [1, 1, 1], [0.95, 0.4, 0.55], [0.7, 0.45, 0.95], [1, 0.5, 0.2]];
+  for (n = 0, guard = 0; n < 700 && guard < 8000; guard++) { x = (rnd() - 0.5) * 500; z = (rnd() - 0.5) * 500; if (!ground(x, z, 2.2)) continue; q = petals[Math.floor(rnd() * 5)]; flowers.push([x, z, 0.8 + rnd() * 0.8, tint(q[0], q[1], q[2]), rnd() * 6.28]); n++; }
+  for (n = 0, guard = 0; n < 190 && guard < 4000; guard++) { x = (rnd() - 0.5) * 500; z = (rnd() - 0.5) * 500; if (Math.sqrt(x * x + z * z) > 246 || roadD(x, z) < 3 || !ground(x, z, 3) && Math.abs(x - riverX(z)) > 22) continue; rocks.push([x, z, 0.6 + rnd() * 1.6, tint(0.85 + rnd() * 0.3, 0.85 + rnd() * 0.3, 0.85 + rnd() * 0.3), rnd() * 6.28]); n++; }
+  inst(treeGeo(0x3f8f2f, 0x4a9a35, 0x357f2a), trees); inst(treeGeo(0xf2c21c, 0xf7d43a, 0xe2ad12), ipeY); inst(treeGeo(0xe07fb0, 0xec9cc4, 0xd0689c), ipeP); inst(treeGeo(0x8f5fc9, 0xa67adb, 0x7c4cb5), ipeR);
+  inst(gArau, arau); inst(merge(palmParts), palms); inst(merge(banParts), bananas); inst(gBush, bushes); inst(gGrass, grass, false); inst(gFlower, flowers, false); inst(gRock, rocks);
+  // bamboo: the Saci's taquaral and clumps inside the Capoeirão
   var BN = 300, st = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.08, 0.12, 7.5, 5), M(0x86b83c), BN), tf = new THREE.InstancedMesh(new THREE.ConeGeometry(0.8, 2.4, 5), M(0x5f9a2e), BN);
   for (n = 0; n < BN; n++) {
     var ang = rnd() * 6.283, rad;
@@ -449,34 +495,53 @@ function mkTruck(c) {
 }
 var MK = { narizinho: mkNarizinho, visconde: mkVisconde, rabico: mkRabico, quindim: mkQuindim };
 
-/* ---------- the Sítio: the white house with the veranda, and what the books put around it ---------- */
-var emilia = mkEmilia();
+/* ---------- the Sítio: a Paraíba-valley casarão (whitewashed taipa, blue joinery, clay tiles) and its yard ---------- */
+var emilia = mkEmilia(), CHIM = { x: 6.5, y: H(0, 0) + 7.4, z: -14.5 };
 (function () {
   var h = H(0, 0), g = new THREE.Group(), i, a, x, z; g.position.set(0, h, -8); scene.add(g);
-  var wall = M(0xf4efe2), blue = M(0x2a5db0), wood = M(0x6b4a2b);
-  g.add(box(16, 4.4, 8, wall, 0, 2.2, 0), box(17, 0.3, 3.6, M(0x9a6b3f), 0, 0.15, 5.6), box(1.4, 2.6, 0.2, blue, 0, 1.3, 4.05));
-  [-5.5, -2.8, 2.8, 5.5].forEach(function (wx) { g.add(box(1.3, 1.5, 0.2, blue, wx, 2.4, 4.05)); });
-  var roof = cone(11.6, 3.4, M(0xb5452c), 0, 6.1, 0.6, 4); roof.rotation.y = Math.PI / 4; roof.scale.set(1, 1, 0.62); g.add(roof);
-  g.add(box(17.4, 0.25, 4, M(0xb5452c), 0, 4.1, 5.6));
-  [-8, -4, 4, 8].forEach(function (px) { g.add(cyl(0.14, 0.14, 4, wood, px, 2, 7.2)); });
-  g.add(box(1.2, 2.2, 1.2, M(0x9a4a34), 5, 7.2, -1), box(1.1, 0.9, 0.5, wood, -5.6, 0.75, 6.2), box(1.1, 1, 0.08, wood, -5.6, 1.5, 5.95));
-  var benta = mkBenta(); benta.position.set(-2.6, 0.3, 5.6); g.add(benta);
-  var nast = mkNastacia(); nast.position.set(2.8, 0.3, 5.6); g.add(nast);
-  // the gate, with the yellow woodpecker on the post
-  var sg = board('SÍTIO DO PICAPAU AMARELO', 7, 1.75, '#f5c518', '#14110d'), beak = cone(0.04, 0.22, M(0x14110d), 3.3, 5.48, 32.3, 4), gate = box(3.1, 1.2, 0.1, wood, -1.9, 0.8, 33.4); sg.position.set(0, 4.2, 32); beak.rotation.x = Math.PI / 2; gate.rotation.y = 1.1;
-  g.add(sg, cyl(0.14, 0.14, 5, wood, -3.3, 2.5, 32), cyl(0.14, 0.14, 5, wood, 3.3, 2.5, 32), sph(0.22, M(0xf5c518), 3.3, 5.2, 32, 1, 1.3, 1), sph(0.14, M(0xd8362f), 3.3, 5.5, 32.08), beak, gate);
-  for (i = 0; i < 26; i++) { a = i / 26 * Math.PI * 2; if (Math.abs(Math.sin(a)) > 0.93 && Math.cos(a) < 0.4) continue; x = Math.cos(a) * 24; z = Math.sin(a) * 24 + 8; if (z > 30 && Math.abs(x) < 5) continue; g.add(box(0.16, 1.1, 0.16, wall, x, 0.55, z)); }
+  var wall = M(0xf6f1e4), blue = M(0x2456a6), dblue = M(0x1d478c), wood = M(0x6b4a2b), plank = M(0x9a6b3f), stone = M(0x8d8a84), clay = 0xb24a2c, glass = M(0x22303a);
+  g.add(box(16.6, 0.7, 8.6, stone, 0, 0.35, 0), box(16, 3.8, 8, wall, 0, 2.6, 0), box(16.08, 0.55, 8.08, blue, 0, 0.98, 0));
+  var rf = hipRoof(18.6, 10.6, 2.9, clay); rf.position.set(0, 4.5, 0); g.add(rf);
+  // kitchen wing at the back, with the wood stove's chimney
+  g.add(box(6.4, 0.7, 4.4, stone, 5, 0.35, -6), box(6, 3.2, 4, wall, 5, 2.3, -6), box(6.08, 0.55, 4.08, blue, 5, 0.98, -6), box(0.9, 3.6, 0.9, M(0x9a4a34), 6.5, 5.3, -6.5), box(1.1, 0.16, 1.1, M(0x7a3a28), 6.5, 7.15, -6.5), box(0.9, 1.9, 0.12, dblue, 5, 1.65, -8.03));
+  var rk = hipRoof(7.4, 5.4, 1.9, clay); rk.position.set(5, 3.9, -6); g.add(rk);
+  function janela(wx, wy, wz, ry) { var w = grp(box(1.3, 1.7, 0.12, blue, 0, 0, 0), box(1, 1.4, 0.14, glass, 0, 0, 0.01), box(0.55, 1.6, 0.06, dblue, -0.95, 0, 0.05), box(0.55, 1.6, 0.06, dblue, 0.95, 0, 0.05), box(1.5, 0.1, 0.24, wall, 0, -0.9, 0.06)); w.position.set(wx, wy, wz); w.rotation.y = ry || 0; g.add(w); }
+  [-6, -3.1, 3.1, 6].forEach(function (wx) { janela(wx, 2.75, 4.02); }); janela(-6, 2.75, -4.02, Math.PI); janela(-2.6, 2.75, -4.02, Math.PI);
+  janela(-8.02, 2.75, 1.8, -Math.PI / 2); janela(-8.02, 2.75, -1.8, -Math.PI / 2); janela(8.02, 2.75, 1.8, Math.PI / 2);
+  g.add(box(2, 2.8, 0.14, blue, 0, 2.1, 4.02), box(0.86, 2.5, 0.16, dblue, -0.46, 2, 4.03), box(0.86, 2.5, 0.16, dblue, 0.46, 2, 4.03));
+  // the veranda
+  g.add(box(16.6, 0.7, 3.4, plank, 0, 0.35, 5.7), box(2.6, 0.24, 0.7, stone, 0, 0.47, 7.75), box(2.6, 0.24, 0.7, stone, 0, 0.2, 8.4));
+  var vr = box(18, 0.16, 4.3, M(clay), 0, 4.05, 5.9); vr.rotation.x = 0.2; g.add(vr);
+  for (i = 0; i < 7; i++) g.add(cyl(0.12, 0.12, 3, wood, -8.1 + i * 2.7, 2.2, 7.25, 6));
+  [-4.75, 4.75].forEach(function (rx) { g.add(box(6.7, 0.1, 0.1, wood, rx, 1.65, 7.25), box(6.7, 0.08, 0.08, wood, rx, 0.95, 7.25)); for (i = 0; i < 10; i++) g.add(box(0.07, 0.75, 0.07, wall, rx - 3.1 + i * 0.69, 1.3, 7.25)); });
+  for (i = 0; i < 6; i++) { a = (i - 2.5) / 2.5; g.add(box(0.5, 0.06, 1.1, M(i % 2 ? 0xd8362f : 0xf6ecd2), 5.4 + a * 1.25, 1.3 + a * a * 0.75, 6.1)); }
+  g.add(box(0.7, 0.08, 0.7, wood, -3.9, 1.15, 5.3), box(0.7, 0.9, 0.08, wood, -3.9, 1.6, 4.98), box(0.06, 0.06, 0.9, wood, -4.2, 0.76, 5.3), box(0.06, 0.06, 0.9, wood, -3.6, 0.76, 5.3), box(2, 0.08, 0.5, wood, -6.4, 1.15, 4.6), box(2, 0.4, 0.08, wood, -6.4, 0.95, 4.6));
+  [-6.75, -1.35, 1.35, 6.75].forEach(function (fx) { g.add(sph(0.4, M(0x3f8f2f), fx, 3.15, 7.05, 1, 0.75, 1), beam(fx, 3.3, 7.05, fx, 3.75, 7.05, 0.015, wood)); });
+  var benta = mkBenta(); benta.position.set(-2.6, 0.7, 5.6); g.add(benta);
+  var nast = mkNastacia(); nast.position.set(2.8, 0.7, 5.6); g.add(nast);
+  // the porteira, with the yellow woodpecker on the post
+  var sg = board('SÍTIO DO PICAPAU AMARELO', 7, 1.75, '#f5c518', '#14110d'), beak = cone(0.04, 0.22, M(0x14110d), 3.3, 5.48, 32.3, 4), pt = grp(); sg.position.set(0, 4.2, 32); beak.rotation.x = Math.PI / 2;
+  for (i = 0; i < 5; i++) pt.add(box(3.1, 0.12, 0.08, wood, 1.55, 0.3 + i * 0.28, 0)); pt.add(box(0.12, 1.5, 0.1, wood, 0.06, 0.85, 0), box(0.12, 1.5, 0.1, wood, 3.04, 0.85, 0), beam(0.1, 0.3, 0.05, 3, 1.4, 0.05, 0.04, wood)); pt.position.set(-3.2, 0, 32.1); pt.rotation.y = 1.15;
+  g.add(sg, pt, cyl(0.2, 0.22, 5, wood, -3.3, 2.5, 32), cyl(0.2, 0.22, 5, wood, 3.3, 2.5, 32), sph(0.22, M(0xf5c518), 3.3, 5.2, 32, 1, 1.3, 1), sph(0.14, M(0xd8362f), 3.3, 5.5, 32.08), beak);
+  // post-and-rail fence round the yard
+  var prev = null; for (i = 0; i <= 44; i++) { a = i / 44 * 6.2832 + 1.5708; x = Math.cos(a) * 24; z = Math.sin(a) * 24 + 8; if (Math.abs(x) < 3.5 && z > 30) { prev = null; continue; } g.add(box(0.18, 1.25, 0.18, wood, x, 0.62, z)); if (prev) g.add(beam(prev[0], 1.05, prev[1], x, 1.05, z, 0.045, wood), beam(prev[0], 0.55, prev[1], x, 0.55, z, 0.045, wood)); prev = [x, z]; }
+  // the yard: stone well, ox cart, clothes line, woodpile, the cross
+  var well = grp(cyl(1, 1.1, 0.9, stone, 0, 0.45, 0, 10), cyl(0.8, 0.8, 0.92, M(0x1c2a33), 0, 0.46, 0, 10), cyl(0.07, 0.07, 2.1, wood, -0.95, 1.35, 0), cyl(0.07, 0.07, 2.1, wood, 0.95, 1.35, 0), box(2.2, 0.1, 0.1, wood, 0, 2.3, 0), cyl(0.17, 0.13, 0.26, wood, 0.25, 1.15, 0, 8)), wr = hipRoof(2.8, 1.8, 0.7, clay); wr.position.y = 2.4; well.add(wr); place(well, 9.5, 13);
+  var cart = grp(box(1.5, 0.12, 2.6, plank, 0, 1, 0), box(0.08, 0.5, 2.6, plank, -0.75, 1.3, 0), box(0.08, 0.5, 2.6, plank, 0.75, 1.3, 0), beam(0, 1, 1.3, 0, 0.45, 3.8, 0.06, wood)); [-0.9, 0.9].forEach(function (wx) { var wh = cyl(0.8, 0.8, 0.12, wood, wx, 0.8, 0, 12); wh.rotation.z = Math.PI / 2; cart.add(wh); }); place(cart, -8, 20, 0.6);
+  place(grp(cyl(0.06, 0.06, 2.2, wood, 0, 1.1, -2.2), cyl(0.06, 0.06, 2.2, wood, 0, 1.1, 2.2), beam(0, 2.1, -2.2, 0, 2.1, 2.2, 0.012, wood), box(0.04, 0.8, 0.7, M(0xf6ecd2), 0, 1.65, -1.2), box(0.04, 0.9, 0.6, M(0xd8362f), 0, 1.6, -0.2), box(0.04, 0.7, 0.8, M(0x58b7d8), 0, 1.7, 0.8), box(0.04, 0.6, 0.5, M(0xf5c518), 0, 1.75, 1.6)), 13, -3);
+  for (i = 0; i < 9; i++) { var lg = cyl(0.14, 0.14, 1.3, M(0x7a5a3a), 10.6 + (i % 4) * 0.3 + (i > 3 ? 0.15 : 0), h + 0.15 + (i > 3 ? 0.27 : 0) + (i > 6 ? 0.27 : 0), -18.4, 6); lg.rotation.x = Math.PI / 2; scene.add(lg); }
+  place(grp(cyl(1.2, 1.5, 0.5, stone, 0, 0.25, 0, 8), box(0.2, 3, 0.2, wood, 0, 2, 0), box(1.4, 0.2, 0.2, wood, 0, 2.7, 0)), 20, 25);
   // Rabicó's sty, the corral of Mocha and the talking donkey, the hen house, the vegetable patch
   pen(17, 6, 5); place(cyl(2.2, 2.2, 0.08, M(0x5a4030), 0, 0, 0, 9), 17, 6, 0, 0.04); place(box(1.4, 0.3, 0.5, wood), 17, 4.2, 0, 0.15);
-  pen(-14, 8, 7); place(mkVaca(), -15.2, 7, 1.2); var burro = place(mkBurro(), -12.4, 9.6, 2.4);
-  place(casa(2.6, 1.6, 2.2, 0x9a6b3f, 0xb5452c, 0x3a2414), 19, -9, -1.2);
+  pen(-14, 8, 7); place(mkVaca(), -15.2, 7, 1.2); place(mkBurro(), -12.4, 9.6, 2.4);
+  place(casa(2.6, 1.6, 2.2, 0x9a6b3f, clay, 0x3a2414), 19, -9, -1.2);
   [[17, -6.4, 0xffffff], [18.4, -5.6, 0xb5713a], [16, -7.8, 0xffffff], [19.6, -6.6, 0x2b2b30]].forEach(function (c) { place(mkGalinha(c[2]), c[0], c[1], c[0]); });
-  for (i = 0; i < 4; i++) { place(box(7, 0.25, 0.7, M(0x4a3524)), 13, -15 - i * 1.3, 0, 0.1); for (a = 0; a < 6; a++) place(sph(0.22, M(a % 2 ? 0x4c9a3a : 0x7fbf4a), 0, 0, 0, 1, 0.8, 1), 10.2 + a * 1.1, -15 - i * 1.3, 0, 0.36); }
-  // the big tree with the swing
-  var mx = -17, mz = -8, mh = H(mx, mz); scene.add(cyl(0.6, 0.85, 5, wood, mx, mh + 2.5, mz, 7), sph(4.6, M(0x2c6b25), mx, mh + 7, mz, 1.2, 0.8, 1.2), sph(3.2, M(0x347a2b), mx + 2.6, mh + 6, mz + 1.5), beam(mx, mh + 4.6, mz, mx + 4.6, mh + 4.9, mz + 2.2, 0.16, wood), beam(mx + 3.4, mh + 4.8, mz + 1.6, mx + 3.4, mh + 1, mz + 1.6, 0.02, wood), beam(mx + 4.3, mh + 4.9, mz + 2.05, mx + 4.3, mh + 1, mz + 2.05, 0.02, wood), box(1.1, 0.07, 0.4, wood, mx + 3.85, mh + 1, mz + 1.82));
-  treeGrid['-1,-1'] = (treeGrid['-1,-1'] || []).concat([mx, mz, 0.9]);
+  for (i = 0; i < 4; i++) { place(box(7, 0.25, 0.7, M(0x4a3524)), 15, -19 - i * 1.3, 0, 0.1); for (a = 0; a < 6; a++) place(sph(0.22, M(a % 2 ? 0x4c9a3a : 0x7fbf4a), 0, 0, 0, 1, 0.8, 1), 12.2 + a * 1.1, -19 - i * 1.3, 0, 0.36); }
+  // the old jaqueira with the swing
+  var mx = -17, mz = -8, mh = H(mx, mz), lf = M(0x2c6b25), lf2 = M(0x347a2b); scene.add(cyl(0.65, 0.95, 5, wood, mx, mh + 2.5, mz, 8), sph(4.4, lf, mx, mh + 7.2, mz, 1.2, 0.8, 1.2), sph(3.2, lf2, mx + 3, mh + 6.2, mz + 1.5), sph(3, lf2, mx - 2.8, mh + 6.4, mz - 1.2), sph(2.8, lf, mx + 0.5, mh + 9, mz + 0.4), sph(0.3, M(0x9aa83a), mx + 0.7, mh + 3.2, mz + 0.3, 1, 1.6, 1), sph(0.26, M(0x9aa83a), mx - 0.6, mh + 2.4, mz + 0.5, 1, 1.6, 1), beam(mx, mh + 4.6, mz, mx + 4.6, mh + 4.9, mz + 2.2, 0.16, wood), beam(mx + 3.4, mh + 4.8, mz + 1.6, mx + 3.4, mh + 1, mz + 1.6, 0.02, wood), beam(mx + 4.3, mh + 4.9, mz + 2.05, mx + 4.3, mh + 1, mz + 2.05, 0.02, wood), box(1.1, 0.07, 0.4, wood, mx + 3.85, mh + 1, mz + 1.82));
+  gridAdd(mx, mz, 0.9);
   // jabuticabeiras behind the house, and the corn that gave the Visconde his body
-  for (i = 0; i < 6; i++) { x = -9 + i * 3.8; z = -24 - (i % 2) * 4; var th = H(x, z); scene.add(cyl(0.2, 0.3, 2, M(0x2a1c14), x, th + 1, z, 6), sph(1.5, M(0x1f5a2a), x, th + 2.8, z, 1, 0.8, 1), sph(0.07, M(0x1a0f24), x + 0.26, th + 1.1, z), sph(0.07, M(0x1a0f24), x - 0.2, th + 1.5, z + 0.2), sph(0.07, M(0x1a0f24), x + 0.1, th + 0.7, z - 0.27)); }
+  for (i = 0; i < 6; i++) { x = -9 + i * 3.8; z = -24 - (i % 2) * 4; var th = H(x, z); scene.add(cyl(0.2, 0.3, 2, M(0x2a1c14), x, th + 1, z, 6), sph(1.5, M(0x1f5a2a), x, th + 2.8, z, 1, 0.8, 1), sph(1, M(0x256b31), x + 0.9, th + 2.5, z + 0.5), sph(0.07, M(0x1a0f24), x + 0.26, th + 1.1, z), sph(0.07, M(0x1a0f24), x - 0.2, th + 1.5, z + 0.2), sph(0.07, M(0x1a0f24), x + 0.1, th + 0.7, z - 0.27)); }
   for (i = 0; i < 40; i++) { x = -34 + (i % 8) * 1.5; z = -30 + Math.floor(i / 8) * 1.8; var chh = H(x, z); scene.add(cyl(0.05, 0.07, 2.4, M(0x7fae3a), x, chh + 1.2, z, 4), sph(0.14, M(0xf2cf3a), x + 0.1, chh + 1.7, z, 0.7, 1.6, 0.7)); }
   var bn = 0, bl = ['A Cuca prendeu cada um num canto do Sítio: no ribeirão, no pomar, no poço do Visconde e no capoeirão.', 'O Tio Barnabé mora no rancho junto da ponte. O que ele sabe de saci, nenhum livro meu sabe.', 'Na caverna da Cuca só se entra com os quatro de volta. Vá com juízo, meu neto.'];
   TALK.push({ x: -2.6, z: -2.4, r: 3, label: 'Falar com Dona Benta', fn: function () { say('Dona Benta', bl[bn++ % bl.length]); } });
@@ -578,14 +643,19 @@ function gotSaci(quiet) {
   // the Saci's bamboo grove and its whirlwind
   redemoinho = cyl(1.7, 0.25, 4.5, new THREE.MeshBasicMaterial({ color: 0xd9c79a, transparent: true, opacity: 0.42, depthWrite: false }), SACI.x, H(SACI.x, SACI.z) + 2.25, SACI.z, 9); redemoinho.castShadow = false; scene.add(redemoinho);
   TALK.push({ x: SACI.x, z: SACI.z, r: 5, ok: function () { return !flags.saci; }, label: 'Pegar o redemoinho', fn: function () { if (!flags.pen) say('Emília', 'Redemoinho de saci! Com a mão não pega. O Tio Barnabé, lá no rancho da ponte, sabe como.'); else gotSaci(false); } });
-  // Arraial dos Tucanos: chapel, venda, a few houses round the square
-  var ax = ARRAIAL.x, az = ARRAIAL.z, ah = H(ax, az), cap = casa(6, 4.6, 9, 0xf4efe2, 0xb5452c); place(cap, ax, az - 15);
-  scene.add(box(2.4, 8.5, 2.4, M(0xf4efe2), ax, ah + 4.25, az - 10.2), cone(2, 2.4, M(0xb5452c), ax, ah + 9.7, az - 10.2, 4), box(0.16, 1.3, 0.16, wood, ax, ah + 11.4, az - 10.2), box(0.8, 0.16, 0.16, wood, ax, ah + 11.6, az - 10.2), box(1, 2.2, 0.14, M(0x2a5db0), ax, ah + 1.1, az - 8.95));
-  place(casa(8, 3.4, 6, 0xe8c9a0, 0xb5452c, 0x6b4a2b), ax - 13, az + 5, Math.PI / 2); var vs = board('VENDA DO ELIAS', 4.4, 0.9, '#f6ecd2', '#8a1f1f'); vs.position.set(ax - 9.9, ah + 2.9, az + 5); vs.rotation.y = Math.PI / 2; scene.add(vs);
-  [[13, -6, 0xf2cf3a, -1.57], [14, 6, 0x7fb6e6, -1.57], [5, 15, 0xf2a3bd, 3.14], [-8, 16, 0x9ad08a, 3.14]].forEach(function (c) { place(casa(5, 3, 5, c[2], 0x9a4a34), ax + c[0], az + c[1], c[3]); });
-  scene.add(cyl(2.6, 2.8, 0.5, M(0xd9d2c0), ax, ah + 0.25, az + 3, 8), cone(3, 1.4, M(0x9a4a34), ax, ah + 3.9, az + 3, 8)); for (i = 0; i < 6; i++) { a = i / 6 * 6.283; scene.add(cyl(0.08, 0.08, 2.8, wood, ax + Math.cos(a) * 2.3, ah + 1.9, az + 3 + Math.sin(a) * 2.3, 5)); }
-  place(mkCoronel(), ax + 4, az + 6, -0.6);
-  TALK.push({ x: ax + 4, z: az + 6, r: 3.5, label: 'Falar com o Coronel Teodorico', fn: function () { say('Coronel Teodorico', ['Compadre Pedrinho! A Cuca espantou a freguesia do Elias. O que tiver na praça é seu, fica por conta do arraial.', 'Diga à comadre Benta que o arraial inteiro torce pelo Sítio.'][Math.floor(R() * 2)]); } });
+  // Arraial dos Tucanos: the church on the square, the venda, a row of coloured houses, the bandstand
+  var ax = ARRAIAL.x, az = ARRAIAL.z, ah = H(ax, az), white = M(0xf6f1e4), bl = M(0x2456a6), dark = M(0x22303a), clay = 0xb24a2c, lamp = M(0xfff3b0, 0xa08a40);
+  scene.add(cyl(13, 13, 0.08, M(0xa39c8e), ax, ah + 0.04, az + 3, 18));
+  place(casa(7, 6, 11, 0xf6f1e4, clay, 0x2456a6), ax, az - 16);
+  var rw = cyl(0.75, 0.75, 0.1, dark, ax, ah + 4.7, az - 10.46, 10), tw = hipRoof(3.5, 3.5, 2.8, clay); rw.rotation.x = Math.PI / 2; tw.position.set(ax - 3.3, ah + 11, az - 9.6);
+  scene.add(rw, tw, box(2.8, 11, 2.8, white, ax - 3.3, ah + 5.5, az - 9.6), box(2.92, 0.3, 2.92, bl, ax - 3.3, ah + 7.7, az - 9.6), box(2.92, 0.3, 2.92, bl, ax - 3.3, ah + 10.85, az - 9.6), box(1, 1.7, 2.86, dark, ax - 3.3, ah + 9.3, az - 9.6), box(2.86, 1.7, 1, dark, ax - 3.3, ah + 9.3, az - 9.6), box(0.16, 1.5, 0.16, wood, ax - 3.3, ah + 14.4, az - 9.6), box(0.9, 0.16, 0.16, wood, ax - 3.3, ah + 14.7, az - 9.6), box(3.4, 0.3, 1.2, M(0x8d8a84), ax, ah + 0.15, az - 9.9));
+  place(casa(8, 3.6, 6, 0xe9cfa6, clay, 0x6b4a2b), ax - 15, az + 4, Math.PI / 2); var vs = board('VENDA DO ELIAS', 4.4, 0.9, '#f6ecd2', '#8a1f1f'); vs.position.set(ax - 11.88, ah + 3.1, az + 4); vs.rotation.y = Math.PI / 2; scene.add(vs, box(0.8, 0.8, 0.8, M(0x9a6b3f), ax - 11.2, ah + 0.4, az + 7.6), box(0.8, 0.6, 0.8, M(0x8a6238), ax - 11.2, ah + 0.3, az + 8.6), cyl(0.4, 0.4, 0.9, M(0x6b4a2b), ax - 11.3, ah + 0.45, az + 0.6, 8));
+  [[-6.5, 0xf2cf3a, 0x2456a6], [-1, 0x7fb6e6, 0x8a1f1f], [4.5, 0xf2a3bd, 0x2f7d6b], [10, 0x9ad08a, 0x6b4a2b]].forEach(function (c, j) { place(casa(5.3, 3.2 + (j % 2) * 0.5, 5, c[1], clay, c[2]), ax + 16, az + c[0], -Math.PI / 2); });
+  [[7, 0xe8b07a, 0x2456a6], [0.5, 0xf6f1e4, 0x2f7d6b], [-6, 0xc9b6e6, 0x8a1f1f]].forEach(function (c) { place(casa(6.2, 3.3, 5, c[1], clay, c[2]), ax + c[0], az + 20, Math.PI); });
+  scene.add(cyl(2.6, 2.8, 0.5, M(0xd9d2c0), ax, ah + 0.25, az + 3, 8), cone(3.2, 1.4, M(clay), ax, ah + 4, az + 3, 8), box(0.3, 0.3, 0.3, lamp, ax, ah + 4.8, az + 3)); for (i = 0; i < 6; i++) { a = i / 6 * 6.283; scene.add(cyl(0.08, 0.08, 2.9, wood, ax + Math.cos(a) * 2.3, ah + 1.95, az + 3 + Math.sin(a) * 2.3, 5)); }
+  [[-8, -3], [8, -3], [-8, 9], [8, 9]].forEach(function (q) { scene.add(cyl(0.07, 0.09, 3.2, dark, ax + q[0], ah + 1.6, az + q[1], 6), sph(0.24, lamp, ax + q[0], ah + 3.3, az + q[1]), box(1.7, 0.1, 0.5, wood, ax + q[0] * 0.6, ah + 0.5, az + 3 + (q[1] - 3) * 0.75), box(1.7, 0.4, 0.08, wood, ax + q[0] * 0.6, ah + 0.25, az + 3 + (q[1] - 3) * 0.75)); });
+  place(mkCoronel(), ax + 4, az + 7, -0.6);
+  TALK.push({ x: ax + 4, z: az + 7, r: 3.5, label: 'Falar com o Coronel Teodorico', fn: function () { say('Coronel Teodorico', ['Compadre Pedrinho! A Cuca espantou a freguesia do Elias. O que tiver na praça é seu, fica por conta do arraial.', 'Diga à comadre Benta que o arraial inteiro torce pelo Sítio.'][Math.floor(R() * 2)]); } });
   // the waterfall where the Iara sings
   var cx = CACH.x; scene.add(sph(11, rock, cx - 11, 8, -231, 1, 1.4, 1), sph(12, M(0x5c6166), cx + 11, 9, -232, 1, 1.4, 1), sph(9, rock, cx, 5, -236, 1.7, 1.8, 1), box(7, 26, 1, new THREE.MeshBasicMaterial({ color: 0xd8f3fb, transparent: true, opacity: 0.85 }), cx, 11, -226), sph(2, rock, cx - 6, 0, CACH.z, 1, 0.7, 1));
   var ia = mkIara(); ia.position.set(cx - 6, 1.2, CACH.z); ia.rotation.y = 0.6; scene.add(ia);
@@ -600,19 +670,19 @@ vm.visible = false;
 var qRun = mkQuindim(); qRun.visible = false; scene.add(qRun); var charge = { on: false, t: 0, id: 0 };
 var hero = mkPedrinho(); hero.scale.set(0.92, 0.92, 0.92); scene.add(hero);
 var cars = [], car = null, engine = null, lastLook = -9;
-[[-7, 41, 1.57, 0x2f7d6b], [-156, 36, 1.57, 0xc2452d], [150, 62, 3.5, 0x35508f]].forEach(function (c) { var o = { m: mkTruck(c[3]), x: c[0], z: c[1], h: c[2], v: 0, y: H(c[0], c[1]) }; scene.add(o.m); cars.push(o); });
+[[-7, 41, 1.57, 0x2f7d6b], [-158, 37, 1.57, 0xc2452d], [150, 62, 3.5, 0x35508f]].forEach(function (c) { var o = { m: mkTruck(c[3]), x: c[0], z: c[1], h: c[2], v: 0, y: H(c[0], c[1]) }; scene.add(o.m); cars.push(o); });
 function placeCar(c) { var sh = Math.sin(c.h), ch = Math.cos(c.h), y = c.y + 1, hf = GH(c.x + sh * 1.6, c.z + ch * 1.6, y), hb = GH(c.x - sh * 1.6, c.z - ch * 1.6, y), hl = GH(c.x + ch * 0.9, c.z - sh * 0.9, y), hr = GH(c.x - ch * 0.9, c.z + sh * 0.9, y); c.m.position.set(c.x, c.y, c.z); c.m.rotation.set(-Math.atan2(hf - hb, 3.2), c.h, Math.atan2(hl - hr, 1.8)); }
 cars.forEach(placeCar);
 function enterCar(c) { car = c; P.crouch = false; firing = false; hero.visible = false; sfx(120, 0.3, 'sawtooth', 0.06, 60); if (AC) { try { var o = AC.createOscillator(), g = AC.createGain(); o.type = 'sawtooth'; o.frequency.value = 45; g.gain.value = 0.022; o.connect(g); g.connect(AC.destination); o.start(); engine = { o: o, g: g }; } catch (e) {} } if (!flags.drove) { flags.drove = true; say('Emília', 'Eu vou na carroceria! Segue a estrada de terra, que no pasto ela anda menos.'); } }
 function exitCar() { var c = car; if (!c) return; car = null; c.v = 0; P.x = c.x + Math.cos(c.h) * 2.1; P.z = c.z - Math.sin(c.h) * 2.1; P.y = Math.max(GH(P.x, P.z, c.y + 1), c.y); hero.visible = true; if (engine) { try { engine.o.stop(); } catch (e) {} engine = null; } }
 
 /* ---------- particles ---------- */
-var PN = 400, pPos = new Float32Array(PN * 3), pCol = new Float32Array(PN * 3), pVel = new Float32Array(PN * 3), pLife = new Float32Array(PN), pI = 0, pGeo = new THREE.BufferGeometry();
+var PN = 400, pPos = new Float32Array(PN * 3), pCol = new Float32Array(PN * 3), pVel = new Float32Array(PN * 3), pLife = new Float32Array(PN), pGr = new Float32Array(PN), pI = 0, pGeo = new THREE.BufferGeometry();
 for (var pi = 0; pi < PN; pi++) pPos[pi * 3 + 1] = -999;
 pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3)); pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
 var pts = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 0.4, vertexColors: true, transparent: true, depthWrite: false })); pts.frustumCulled = false; scene.add(pts);
 var tmpC = new THREE.Color();
-function burst(x, y, z, hex, n, sp) { for (var i = 0; i < n; i++) { var k = pI = (pI + 1) % PN; tmpC.setHex(hex); pPos[k * 3] = x; pPos[k * 3 + 1] = y; pPos[k * 3 + 2] = z; pCol[k * 3] = tmpC.r; pCol[k * 3 + 1] = tmpC.g; pCol[k * 3 + 2] = tmpC.b; pVel[k * 3] = (R() - 0.5) * sp; pVel[k * 3 + 1] = R() * sp * 0.8; pVel[k * 3 + 2] = (R() - 0.5) * sp; pLife[k] = 0.5 + R() * 0.7; } }
+function burst(x, y, z, hex, n, sp, grav) { for (var i = 0; i < n; i++) { var k = pI = (pI + 1) % PN; tmpC.setHex(hex); pPos[k * 3] = x; pPos[k * 3 + 1] = y; pPos[k * 3 + 2] = z; pCol[k * 3] = tmpC.r; pCol[k * 3 + 1] = tmpC.g; pCol[k * 3 + 2] = tmpC.b; pVel[k * 3] = (R() - 0.5) * sp; pVel[k * 3 + 1] = R() * sp * 0.8; pVel[k * 3 + 2] = (R() - 0.5) * sp; pLife[k] = 0.5 + R() * 0.7; pGr[k] = grav === undefined ? 9 : grav; if (grav < 0) pLife[k] += 1.6; } }
 
 /* ---------- sound ---------- */
 var AC = null;
@@ -771,7 +841,7 @@ function updEnemies(dt) {
 function collide(nx, nz, rad) {
   var hit = false, gx = Math.floor(nx / 20), gz = Math.floor(nz / 20);
   for (var a = gx - 1; a <= gx + 1; a++) for (var b = gz - 1; b <= gz + 1; b++) { var cell = treeGrid[a + ',' + b]; if (!cell) continue; for (var i = 0; i < cell.length; i += 3) { var dx = nx - cell[i], dz = nz - cell[i + 1], rr = cell[i + 2] + rad, d2 = dx * dx + dz * dz; if (d2 < rr * rr && d2 > 0.0001) { var d = Math.sqrt(d2); nx = cell[i] + dx / d * rr; nz = cell[i + 1] + dz / d * rr; hit = true; } } }
-  var hx = 8.25 + rad, z0 = -12.25 - rad, z1 = -3.75 + rad;
+  var hx = 8.25 + rad, z0 = -16.25 - rad, z1 = -3.75 + rad;
   if (nx > -hx && nx < hx && nz > z0 && nz < z1) { hit = true; if (P.z >= z1) nz = z1; else if (P.z <= z0) nz = z0; else nx = P.x > 0 ? hx : -hx; }
   var dc = Math.sqrt(nx * nx + nz * nz); if (dc > 240) { nx *= 240 / dc; nz *= 240 / dc; }
   if (barrier.visible) { var db = dist2(nx, nz, TOCA.x, TOCA.z), lim = 34.2 + rad; if (db < lim) { hit = true; nx = TOCA.x + (nx - TOCA.x) / db * lim; nz = TOCA.z + (nz - TOCA.z) / db * lim; if (time - toldBarrier > 12) { toldBarrier = time; say('Emília', 'Feitiço de jacaroa. Só cai com os quatro soltos. Vamos buscar o pessoal.'); } } }
@@ -847,10 +917,11 @@ function updWorld(dt) {
   }
   if (redemoinho.visible) { redemoinho.rotation.y += dt * 9; redemoinho.position.x = SACI.x + Math.sin(time * 0.7) * 1.5; redemoinho.position.z = SACI.z + Math.cos(time * 0.9) * 1.5; if (R() < 0.3) burst(redemoinho.position.x, redemoinho.position.y - 1.5, redemoinho.position.z, 0xc9b98a, 1, 5); }
   if (R() < 0.5) burst(CACH.x + (R() - 0.5) * 6, 0.4, -224.5, 0xffffff, 1, 4);
+  if (R() < 0.22) burst(CHIM.x, CHIM.y, CHIM.z, 0xd8d4cc, 1, 0.7, -1.2);
   var di = dist2(P.x, P.z, CACH.x - 6, CACH.z);
   if (di < 17 && di > 2.5 && !P.dead) { P.x += (CACH.x - 6 - P.x) / di * 1.5 * dt; P.z += (CACH.z - P.z) / di * 1.5 * dt; if (time - (flags.iaraT || -99) > 25) { flags.iaraT = time; say('Iara', 'Vem, menino... a água está tão boa...'); say('Emília', 'Tapa o ouvido e anda pra trás, Pedrinho! Iara canta e a gente afunda.'); } }
   // particles
-  for (var k = 0; k < PN; k++) if (pLife[k] > 0) { pLife[k] -= dt; pVel[k * 3 + 1] -= 9 * dt; pPos[k * 3] += pVel[k * 3] * dt; pPos[k * 3 + 1] += pVel[k * 3 + 1] * dt; pPos[k * 3 + 2] += pVel[k * 3 + 2] * dt; if (pLife[k] <= 0) pPos[k * 3 + 1] = -999; }
+  for (var k = 0; k < PN; k++) if (pLife[k] > 0) { pLife[k] -= dt; pVel[k * 3 + 1] -= pGr[k] * dt; pPos[k * 3] += pVel[k * 3] * dt; pPos[k * 3 + 1] += pVel[k * 3 + 1] * dt; pPos[k * 3 + 2] += pVel[k * 3 + 2] * dt; if (pLife[k] <= 0) pPos[k * 3 + 1] = -999; }
   pGeo.attributes.position.needsUpdate = true; pGeo.attributes.color.needsUpdate = true;
   if (barrier.visible) barrier.rotation.y += dt * 0.1;
   idleQ -= dt; if (idleQ <= 0 && subT <= 0 && !subQ.length) { idleQ = 40 + R() * 30; var anyAlert = TOCA.alert || OUT.some(function (o) { return o.alert; }); if (!anyAlert && !won) say('Emília', ['Fumaça roxa no céu é acampamento da Cuca. Fumaça nenhuma é serviço feito.', 'Estrada de terra sempre dá em algum lugar. A da ponte passa no rancho do Tio Barnabé.', 'Agacha que espantalho enxerga mal. Eu que costurei o olho de um, sei do que falo.', 'Se a pedra acabar, volta no Sítio. A Tia Nastácia enche o embornal.', 'Guarda o pó de pirlimpimpim pra quando juntar muito capanga.', 'O ribeirão dá pé. Só anda devagar lá dentro.'][Math.floor(R() * 6)]); }
