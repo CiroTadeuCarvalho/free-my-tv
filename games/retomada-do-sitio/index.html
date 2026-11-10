@@ -123,7 +123,7 @@ button.go:focus-visible { outline: 3px solid var(--agua); outline-offset: 3px; }
     <div id="tJump" class="tb" hidden>Pulo</div>
     <div id="tPo" class="tb" hidden>Pó</div>
     <div id="tQ" class="tb" hidden>Quindim</div>
-    <div id="tAct" class="tb" hidden>Soltar</div>
+    <div id="tAct" class="tb" hidden>Ação</div>
     <div id="fade"></div>
   </div>
 
@@ -131,12 +131,12 @@ button.go:focus-visible { outline: 3px solid var(--agua); outline-offset: 3px; }
     <div class="folha">
       <span class="eyebrow">Mundo aberto em primeira pessoa</span>
       <h1>Retomada do Sítio</h1>
-      <p>A Cuca enfeitiçou o Sítio do Picapau Amarelo. Montou quatro acampamentos, engaiolou Narizinho, o Visconde, Rabicó e o Quindim, e se trancou na Toca. Sobrou você, Pedrinho, um bodoque e a Emília falando no seu ouvido.</p>
-      <p>Limpe cada acampamento, solte quem está preso e ganhe a ajuda de cada um. Com os quatro livres, a barreira da Toca cai.</p>
+      <p>A Cuca enfeitiçou o Sítio do Picapau Amarelo. Montou acampamento no Reino das Águas Claras, no pomar das jabuticabeiras, no poço do Visconde e no Capoeirão dos Tucanos-Vermelhos, engaiolou Narizinho, o Visconde, Rabicó e o Quindim, e se trancou na caverna. Sobrou você, Pedrinho, um bodoque e a Emília falando no seu ouvido.</p>
+      <p>Limpe cada acampamento e solte quem está preso. Pelo caminho tem a ponte do ribeirão, o rancho do Tio Barnabé, um saci para pegar no taquaral, a cachoeira da Iara e o Arraial dos Tucanos.</p>
       <div class="teclas" id="ajuda">
         <span><kbd>WASD</kbd>andar</span><span><kbd>Mouse</kbd>mirar</span><span><kbd>Clique</kbd>bodoque</span>
         <span><kbd>G</kbd>pó de pirlimpimpim</span><span><kbd>Shift</kbd>correr</span><span><kbd>C</kbd>agachar</span>
-        <span><kbd>Espaço</kbd>pular</span><span><kbd>E</kbd>soltar amigo</span><span><kbd>Q</kbd>Quindim</span><span><kbd>P</kbd>pausar</span>
+        <span><kbd>Espaço</kbd>pular</span><span><kbd>E</kbd>falar e soltar</span><span><kbd>Q</kbd>Quindim</span><span><kbd>P</kbd>pausar</span>
       </div>
       <div class="botoes">
         <button class="go" id="bStart" type="button">Pegar o bodoque</button>
@@ -181,38 +181,57 @@ function smooth(a, b, v) { var t = Math.min(1, Math.max(0, (v - a) / (b - a))); 
 function dist2(ax, az, bx, bz) { var dx = ax - bx, dz = az - bz; return Math.sqrt(dx * dx + dz * dz); }
 var R = Math.random;
 
-/* ---------- world data ---------- */
+/* ---------- world data: places named in Lobato's books ---------- */
 var OUT = [
-  { id: 'pomar', nome: 'Pomar das Jabuticabas', x: -130, z: -50, amigo: 'narizinho', E: 4, B: 1 },
-  { id: 'milharal', nome: 'Milharal do Visconde', x: -80, z: 125, amigo: 'visconde', E: 4, B: 2 },
-  { id: 'charco', nome: 'Charco do Rabicó', x: 20, z: -175, amigo: 'rabico', E: 3, B: 3 },
-  { id: 'capoeirao', nome: 'Capoeirão dos Tucanos', x: 175, z: -60, amigo: 'quindim', E: 5, B: 3 }
+  { id: 'aguas', nome: 'Reino das Águas Claras', x: 52, z: -70, amigo: 'narizinho', E: 3, B: 2 },
+  { id: 'poco', nome: 'Poço do Visconde', x: -80, z: 125, amigo: 'visconde', E: 4, B: 2 },
+  { id: 'pomar', nome: 'Pomar das Jabuticabeiras', x: 15, z: -115, amigo: 'rabico', E: 4, B: 2 },
+  { id: 'capoeirao', nome: 'Capoeirão dos Tucanos-Vermelhos', x: 175, z: -60, amigo: 'quindim', E: 5, B: 3 }
 ];
 var AMIGO = {
-  narizinho: { nome: 'Narizinho', cor: '#ff8f8f', perk: 'Coragem da Narizinho: sua vida máxima sobe para 150', fala: 'Eu sabia que você vinha, Pedrinho! Vamos buscar os outros.', casa: [5, 10] },
+  narizinho: { nome: 'Narizinho', cor: '#ff8f8f', perk: 'Coragem da Narizinho: sua vida máxima sobe para 150', fala: 'Eu sabia que você vinha, Pedrinho! O Príncipe Escamado me escondeu enquanto pôde.', casa: [5, 10] },
   visconde: { nome: 'Visconde', cor: '#ffe27a', perk: 'Ciência do Visconde: o bodoque bate mais forte', fala: 'Calculei a elasticidade da sua borracha. Estava errada. Corrigi.', casa: [-5, 10] },
-  rabico: { nome: 'Rabicó', cor: '#ffb3d1', perk: 'Faro do Rabicó: os capangas aparecem no mapa', fala: 'Oinc! Eu fareJO esses espantalhos de longe. De bem longe, de preferência.', casa: [9, 14] },
-  quindim: { nome: 'Quindim', cor: '#c9d3da', perk: 'Carga do Quindim: aperte Q e saia da frente', fala: 'Um rinoceronte educado não arromba. Mas hoje eu abro uma exceção.', casa: [-13, 15] }
+  rabico: { nome: 'Rabicó', cor: '#ffb3d1', perk: 'Faro do Rabicó: os capangas aparecem no mapa', fala: 'Oinc! Eu farejo esses espantalhos de longe. De bem longe, de preferência.', casa: [17, 6] },
+  quindim: { nome: 'Quindim', cor: '#c9d3da', perk: 'Carga do Quindim: aperte Q e saia da frente', fala: 'Um rinoceronte educado não arromba. Mas hoje eu abro uma exceção.', casa: [13, 40] }
 };
-var TOCA = { id: 'toca', nome: 'Toca da Cuca', x: 165, z: 130, enemies: [], alert: false };
-var ZONES = [{ x: 0, z: 0, r: 26 }, { x: TOCA.x, z: TOCA.z, r: 30 }];
-OUT.forEach(function (o) { ZONES.push({ x: o.x, z: o.z, r: 22 }); });
+var TOCA = { id: 'toca', nome: 'Caverna da Cuca', x: 165, z: 130, enemies: [], alert: false };
+var ARRAIAL = { x: -165, z: 25 }, RANCHO = { x: 70, z: 30 }, SACI = { x: -150, z: -95 }, BR = { x: 101, z: 20, half: 27, w: 2.8, y: 0 };
+// c: 1 = beaten earth, 2 = the cave's dark ground, 0 = stays grass
+var ZONES = [{ x: 0, z: 0, r: 26, c: 1 }, { x: TOCA.x, z: TOCA.z, r: 30, c: 2 }, { x: ARRAIAL.x, z: ARRAIAL.z, r: 20, c: 1 }, { x: RANCHO.x, z: RANCHO.z, r: 9, c: 0 }, { x: SACI.x, z: SACI.z, r: 14, c: 0 }];
+OUT.forEach(function (o) { ZONES.push({ x: o.x, z: o.z, r: 22, c: 1 }); });
+var ROADS = [
+  [[0, 34], [40, 30], [62, 24], [74, 20]], [[128, 20], [150, 60], [165, 98]], [[128, 20], [152, -20], [175, -38]],
+  [[0, 34], [-60, 32], [-120, 28], [-145, 25]], [[-60, 32], [-74, 80], [-80, 104]], [[-120, 28], [-140, -40], [-150, -82]],
+  [[10, -14], [12, -60], [15, -94]], [[12, -60], [34, -68]], [[62, 24], [70, 30]]
+];
+function roadD(x, z) {
+  var best = 99;
+  for (var r = 0; r < ROADS.length; r++) for (var i = 0; i < ROADS[r].length - 1; i++) {
+    var a = ROADS[r][i], b = ROADS[r][i + 1], vx = b[0] - a[0], vz = b[1] - a[1], t = ((x - a[0]) * vx + (z - a[1]) * vz) / (vx * vx + vz * vz);
+    t = Math.max(0, Math.min(1, t)); var d = dist2(x, z, a[0] + vx * t, a[1] + vz * t); if (d < best) best = d;
+  }
+  return best;
+}
+var TALK = [], flags = {};
 
 function riverX(z) { return 95 + 25 * Math.sin(z * 0.012); }
 function rawH(x, z) { return Math.sin(x * 0.021) * 4 + Math.cos(z * 0.017) * 4 + Math.sin((x + z) * 0.043) * 1.8 + Math.sin(x * 0.09 + 1.3) * Math.cos(z * 0.08) * 1 + 9; }
 ZONES.forEach(function (zn) { zn.h = Math.max(1.5, rawH(zn.x, zn.z)); });
 function H(x, z) {
   var h = rawH(x, z);
-  var d = Math.abs(x - riverX(z));
-  h = -2.2 + (h + 2.2) * smooth(5, 24, d);
   for (var i = 0; i < ZONES.length; i++) {
     var zn = ZONES[i], dd = dist2(x, z, zn.x, zn.z);
     if (dd < zn.r * 1.9) { var t = smooth(zn.r, zn.r * 1.9, dd); h = zn.h + (h - zn.h) * t; }
   }
+  // the ribeirão cuts through everything, camps included
+  h = -2.2 + (h + 2.2) * smooth(5, 24, Math.abs(x - riverX(z)));
   var dc = Math.sqrt(x * x + z * z);
   if (dc > 225) { var m = (dc - 225) / 40; h += m * m * 55; }
   return h;
 }
+BR.y = Math.min(H(BR.x - BR.half, BR.z), H(BR.x + BR.half, BR.z));
+// ground under a walker at height y: the bridge deck counts when you are on it, not under it
+function GH(x, z, y) { var h = H(x, z); if (Math.abs(z - BR.z) < BR.w && Math.abs(x - BR.x) < BR.half && y > BR.y - 1.5) h = Math.max(h, BR.y); return h; }
 var WATER = -0.6;
 
 /* ---------- three setup ---------- */
@@ -238,6 +257,20 @@ function sph(r, mat, x, y, z, sx, sy, sz) { var m = put(new THREE.Mesh(G('s' + r
 function cyl(rt, rb, h, mat, x, y, z, seg) { seg = seg || 7; return put(new THREE.Mesh(G('c' + rt + '_' + rb + '_' + h + '_' + seg, function () { return new THREE.CylinderGeometry(rt, rb, h, seg); }), mat), x, y, z); }
 function cone(r, h, mat, x, y, z, seg) { return cyl(0, r, h, mat, x, y, z, seg || 6); }
 function grp() { var g = new THREE.Group(); for (var i = 0; i < arguments.length; i++) g.add(arguments[i]); return g; }
+var UP = new THREE.Vector3(0, 1, 0);
+function beam(ax, ay, az, bx, by, bz, r, mat) { var d = new THREE.Vector3(bx - ax, by - ay, bz - az), l = d.length(), m = new THREE.Mesh(G('u' + r, function () { return new THREE.CylinderGeometry(r, r, 1, 5); }), mat); m.scale.y = l; m.position.set((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2); m.quaternion.setFromUnitVectors(UP, d.normalize()); return m; }
+function board(text, w, h, bg, fg) {
+  var cv = document.createElement('canvas'); cv.width = 512; cv.height = Math.round(512 * h / w); var cx = cv.getContext('2d'), ch = cv.height;
+  cx.fillStyle = bg; cx.fillRect(0, 0, 512, ch); cx.strokeStyle = fg; cx.lineWidth = 10; cx.strokeRect(5, 5, 502, ch - 10);
+  cx.fillStyle = fg; cx.font = 'bold ' + Math.round(ch * 0.34) + 'px Georgia, serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(text, 256, ch / 2 + 2, 470);
+  var a = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv) })), b = a.clone(); a.position.z = 0.02; b.position.z = -0.02; b.rotation.y = Math.PI; return grp(a, b);
+}
+function casa(w, h, d, cor, roofC, doorC) {
+  var rf = cone((w + 1.2) / 1.414, h * 0.7, M(roofC), 0, h + h * 0.35, 0, 4), hold = grp(rf), dh = Math.min(1.9, h * 0.8); rf.rotation.y = Math.PI / 4; hold.scale.z = (d + 1.2) / (w + 1.2);
+  return grp(box(w, h, d, M(cor), 0, h / 2, 0), hold, box(0.9, dh, 0.12, M(doorC || 0x2a5db0), 0, dh / 2, d / 2 + 0.03));
+}
+function place(o, x, z, ry, dy) { o.position.set(x, H(x, z) + (dy || 0), z); if (ry) o.rotation.y = ry; scene.add(o); return o; }
+function pen(cx, cz, sz) { var y = H(cx, cz), w = M(0x8a6238), c = [[-1, -1], [1, -1], [1, 1], [-1, 1]]; for (var k = 0; k < 4; k++) { var p = c[k], q = c[(k + 1) % 4], ax = cx + p[0] * sz / 2, az = cz + p[1] * sz / 2, bx = cx + q[0] * sz / 2, bz = cz + q[1] * sz / 2; scene.add(box(0.16, 1.1, 0.16, w, ax, y + 0.55, az), beam(ax, y + 0.9, az, bx, y + 0.9, bz, 0.05, w), beam(ax, y + 0.5, az, bx, y + 0.5, bz, 0.05, w)); } }
 
 /* ---------- terrain ---------- */
 (function () {
@@ -247,12 +280,13 @@ function grp() { var g = new THREE.Group(); for (var i = 0; i < arguments.length
     var x = p.getX(i), z = p.getZ(i), h = H(x, z); p.setY(i, h);
     var n = (Math.sin(x * 0.31) * Math.cos(z * 0.27) + 1) * 0.05, r = 0.25 + n, gg = 0.45 + n, b = 0.17;
     if (h < 0.1) { r = 0.78; gg = 0.71; b = 0.5; }
-    else if (h > 26) { r = 0.5; gg = 0.5; b = 0.48; }
-    else if (h > 15) { r = 0.46 + n; gg = 0.58; b = 0.26; }
+    else if (h > 26) { r = 0.42; gg = 0.5; b = 0.6; }
+    else if (h > 15) { r = 0.4 + n; gg = 0.5; b = 0.24; }
     for (var k = 0; k < ZONES.length; k++) {
-      var zn = ZONES[k], t = 1 - smooth(zn.r * 0.7, zn.r * 1.2, dist2(x, z, zn.x, zn.z));
-      if (t > 0) { var dr = k === 1 ? 0.3 : 0.5, dg = k === 1 ? 0.27 : 0.4, db = k === 1 ? 0.33 : 0.26; r += (dr - r) * t; gg += (dg - gg) * t; b += (db - b) * t; }
+      var zn = ZONES[k]; if (!zn.c) continue; var t = 1 - smooth(zn.r * 0.7, zn.r * 1.2, dist2(x, z, zn.x, zn.z));
+      if (t > 0) { var dr = zn.c === 2 ? 0.3 : 0.5, dg = zn.c === 2 ? 0.27 : 0.4, db = zn.c === 2 ? 0.33 : 0.26; r += (dr - r) * t; gg += (dg - gg) * t; b += (db - b) * t; }
     }
+    if (h > 0.1) { var rt = 1 - smooth(1.6, 4.6, roadD(x, z)); r += (0.56 - r) * rt; gg += (0.44 - gg) * rt; b += (0.28 - b) * rt; }
     col[i * 3] = r; col[i * 3 + 1] = gg; col[i * 3 + 2] = b;
   }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -264,26 +298,37 @@ function grp() { var g = new THREE.Group(); for (var i = 0; i < arguments.length
   for (var c = 0; c < 14; c++) { var cl = sph(9, new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }), (rnd() - 0.5) * 600, 110 + rnd() * 40, (rnd() - 0.5) * 600, 2 + rnd() * 2, 0.5, 1.4 + rnd()); scene.add(cl); }
 })();
 
-/* ---------- trees ---------- */
+/* ---------- trees: open pasture, thick mata at the Capoeirão, bamboo where the Saci lives ---------- */
 var treeGrid = {};
 (function () {
-  var N = 650, tr = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.25, 0.42, 3.2, 6), M(0x6b4a2b), N),
+  var N = 780, tr = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.25, 0.42, 3.2, 6), M(0x6b4a2b), N),
     fo = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(2.3, 0), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, flatShading: true }), N),
-    d = new THREE.Object3D(), c = new THREE.Color(), n = 0, guard = 0;
-  while (n < N && guard++ < 9000) {
-    var x = (rnd() - 0.5) * 500, z = (rnd() - 0.5) * 500, ok = Math.sqrt(x * x + z * z) < 248 && Math.abs(x - riverX(z)) > 11;
-    for (var k = 0; ok && k < ZONES.length; k++) if (dist2(x, z, ZONES[k].x, ZONES[k].z) < ZONES[k].r * 1.25) ok = false;
+    d = new THREE.Object3D(), c = new THREE.Color(), n = 0, guard = 0, x, z, k, h, s;
+  while (n < N && guard++ < 12000) {
+    var mata = rnd() < 0.24;
+    if (mata) { var a = rnd() * 6.283, rr = 27 + rnd() * 48; x = 175 + Math.cos(a) * rr; z = -60 + Math.sin(a) * rr; } else { x = (rnd() - 0.5) * 500; z = (rnd() - 0.5) * 500; }
+    var ok = Math.sqrt(x * x + z * z) < 248 && Math.abs(x - riverX(z)) > 11 && roadD(x, z) > 4.5;
+    for (k = 0; ok && k < ZONES.length; k++) if (dist2(x, z, ZONES[k].x, ZONES[k].z) < ZONES[k].r * 1.25) ok = false;
     if (!ok) continue;
-    var h = H(x, z); if (h < 0.3) continue;
-    var s = 0.8 + rnd() * 0.9;
+    h = H(x, z); if (h < 0.3) continue;
+    s = (mata ? 1.2 : 0.8) + rnd() * 0.9;
     d.position.set(x, h + 1.6 * s, z); d.scale.set(s, s, s); d.rotation.set(0, rnd() * 6, 0); d.updateMatrix(); tr.setMatrixAt(n, d.matrix);
     d.position.y = h + 4.4 * s; d.scale.set(s, s * (0.8 + rnd() * 0.5), s); d.updateMatrix(); fo.setMatrixAt(n, d.matrix);
-    var q = rnd(); if (q < 0.08) c.setRGB(0.98, 0.8, 0.12); else if (q < 0.12) c.setRGB(0.8, 0.45, 0.75); else c.setRGB(0.14 + rnd() * 0.12, 0.38 + rnd() * 0.2, 0.12);
+    var q = rnd(); if (mata) c.setRGB(0.07 + rnd() * 0.06, 0.26 + rnd() * 0.12, 0.1); else if (q < 0.08) c.setRGB(0.98, 0.8, 0.12); else if (q < 0.12) c.setRGB(0.8, 0.45, 0.75); else c.setRGB(0.14 + rnd() * 0.12, 0.38 + rnd() * 0.2, 0.12);
     fo.setColorAt(n, c);
     var key = Math.floor(x / 20) + ',' + Math.floor(z / 20); (treeGrid[key] || (treeGrid[key] = [])).push(x, z, 0.55 * s);
     n++;
   }
   tr.count = fo.count = n; fo.instanceColor.needsUpdate = true; scene.add(tr); scene.add(fo);
+  var BN = 300, st = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.08, 0.12, 7.5, 5), M(0x86b83c), BN), tf = new THREE.InstancedMesh(new THREE.ConeGeometry(0.8, 2.4, 5), M(0x5f9a2e), BN);
+  for (n = 0; n < BN; n++) {
+    var ang = rnd() * 6.283, rad;
+    if (n < 210) { rad = 5 + rnd() * 17; x = SACI.x + Math.cos(ang) * rad; z = SACI.z + Math.sin(ang) * rad; } else { rad = 24 + rnd() * 30; x = 175 + Math.cos(ang) * rad; z = -60 + Math.sin(ang) * rad; }
+    h = H(x, z); s = 0.8 + rnd() * 0.6;
+    d.position.set(x, h + 3.75 * s, z); d.scale.set(1, s, 1); d.rotation.set((rnd() - 0.5) * 0.16, 0, (rnd() - 0.5) * 0.16); d.updateMatrix(); st.setMatrixAt(n, d.matrix);
+    d.position.y = h + 7.6 * s; d.scale.set(1, 1, 1); d.updateMatrix(); tf.setMatrixAt(n, d.matrix);
+  }
+  scene.add(st); scene.add(tf);
 })();
 
 /* ---------- characters (all face +Z) ---------- */
@@ -347,30 +392,59 @@ function mkCuca() {
   for (var s = 0; s < 4; s++) g.add(cone(0.1, 0.3, c, 0, 1.2 + s * 0.3, -0.5 + s * 0.06, 4));
   g.scale.set(1.7, 1.7, 1.7); g.userData = u; return g;
 }
+function mkBarnabe() { var g = person({ skin: 0x5c3b24, top: 0xe8e2d0, legs: 0x6b5a45, hair: 0xf2f2f2 }), pipe = cyl(0.02, 0.02, 0.22, M(0x3a2414), 0.1, 1.6, 0.3); pipe.rotation.x = Math.PI / 2; g.add(sph(0.14, M(0xf2f2f2), 0, 1.56, 0.14), cyl(0.42, 0.42, 0.04, M(0xd9b44a), 0, 1.9, 0, 9), cyl(0.2, 0.24, 0.2, M(0xd9b44a), 0, 2, 0, 9), pipe, cyl(0.045, 0.035, 0.07, M(0x3a2414), 0.1, 1.63, 0.41)); return g; }
+function mkCoronel() { var g = person({ skin: 0xe0b090, top: 0xf4efe2, legs: 0xf4efe2 }); g.add(sph(0.3, M(0xf4efe2), 0, 0.95, 0.08), box(0.26, 0.05, 0.05, M(0x3a2414), 0, 1.62, 0.23), cyl(0.44, 0.44, 0.04, M(0xe9dfc0), 0, 1.9, 0, 9), cyl(0.22, 0.25, 0.22, M(0xe9dfc0), 0, 2.02, 0, 9)); return g; }
+function mkSaci() {
+  var sk = M(0x4a2e1c), red = M(0xd8362f), g = new THREE.Group(), u = {}, pipe = cyl(0.02, 0.02, 0.2, M(0x2a1a10), 0.08, 1.4, 0.28); pipe.rotation.x = Math.PI / 2;
+  u.head = sph(0.22, sk, 0, 1.45, 0); u.armL = cyl(0.06, 0.06, 0.5, sk, -0.3, 1.05, 0); u.armR = cyl(0.06, 0.06, 0.5, sk, 0.3, 1.05, 0);
+  g.add(cyl(0.1, 0.09, 0.75, sk, 0, 0.38, 0), box(0.44, 0.3, 0.26, red, 0, 0.82, 0), box(0.42, 0.42, 0.24, sk, 0, 1.14, 0), u.head, u.armL, u.armR, cone(0.24, 0.52, red, 0, 1.84, -0.04, 7), sph(0.04, M(0xffffff), -0.08, 1.5, 0.19), sph(0.04, M(0xffffff), 0.08, 1.5, 0.19), pipe);
+  g.userData = u; return g;
+}
+function mkIara() {
+  var sk = M(0xc99a6b), hair = M(0x1f7a55), tail = cone(0.26, 1.5, M(0x2fa88a), 0, 0.22, 0.85, 7), fin = cone(0.34, 0.4, M(0x2fa88a), 0, 0.22, 1.75, 4); tail.rotation.x = Math.PI / 2; fin.rotation.x = -Math.PI / 2;
+  return grp(cyl(0.2, 0.26, 0.6, sk, 0, 0.5, 0, 8), sph(0.22, sk, 0, 1.02, 0), box(0.5, 0.95, 0.16, hair, 0, 0.72, -0.2), sph(0.25, hair, 0, 1.08, -0.05), cyl(0.07, 0.07, 0.5, sk, -0.3, 0.55, 0.1), cyl(0.07, 0.07, 0.5, sk, 0.3, 0.55, 0.1), tail, fin, sph(0.035, M(0x14110d), -0.08, 1.05, 0.2), sph(0.035, M(0x14110d), 0.08, 1.05, 0.2));
+}
+function mkPrincipe() { var sc = M(0x6fb7d9); return grp(sph(0.3, sc, 0, 0.55, 0, 0.7, 1.4, 0.55), cone(0.22, 0.3, sc, 0, 0.1, 0, 5), box(0.5, 0.6, 0.05, M(0xd8362f), 0, 0.5, -0.2), cyl(0.16, 0.13, 0.12, M(0xf5c518), 0, 1.02, 0, 6), sph(0.05, M(0x14110d), -0.1, 0.78, 0.14), sph(0.05, M(0x14110d), 0.1, 0.78, 0.14)); }
+function quad(c, L, hh, W, legH) { var m = M(c), g = grp(box(W, hh, L, m, 0, legH + hh / 2, 0), box(W * 0.75, hh * 0.7, L * 0.34, m, 0, legH + hh * 0.9, L * 0.62)); [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(function (q) { g.add(cyl(0.09, 0.08, legH, m, q[0] * W * 0.34, legH / 2, q[1] * L * 0.38)); }); return g; }
+function mkVaca() { var g = quad(0xf2efe6, 1.9, 0.9, 0.8, 0.7), b = M(0x7a4a2a); g.add(box(0.82, 0.5, 0.7, b, 0, 1.32, -0.3), box(0.5, 0.3, 0.4, b, 0.16, 1.6, 1.2), sph(0.16, M(0xf2a3bd), 0, 0.66, -0.5), box(0.5, 0.24, 0.2, M(0xf2c9b8), 0, 1.36, 1.56), sph(0.04, M(0x14110d), -0.26, 1.62, 1.4), sph(0.04, M(0x14110d), 0.26, 1.62, 1.4)); return g; }
+function mkBurro() { var g = quad(0x8d857a, 1.6, 0.75, 0.55, 0.75), e = M(0x6f685f); g.add(cone(0.08, 0.5, e, -0.14, 1.95, 0.95, 4), cone(0.08, 0.5, e, 0.14, 1.95, 0.95, 4), box(0.36, 0.3, 0.25, M(0xe6dfd2), 0, 1.36, 1.36), sph(0.04, M(0x14110d), -0.2, 1.52, 1.2), sph(0.04, M(0x14110d), 0.2, 1.52, 1.2)); return g; }
+function mkGalinha(c) { var bk = cone(0.04, 0.1, M(0xf08a1c), 0, 0.47, 0.3, 4); bk.rotation.x = Math.PI / 2; return grp(sph(0.2, M(c), 0, 0.26, 0, 1, 1, 1.3), sph(0.11, M(c), 0, 0.48, 0.18), bk, box(0.04, 0.1, 0.12, M(0xd8362f), 0, 0.6, 0.18)); }
+function mkTucano() { return grp(sph(0.22, M(0x14110d), 0, 0.28, 0, 1, 1.3, 1), sph(0.15, M(0xd8362f), 0, 0.26, 0.12), sph(0.12, M(0xffffff), 0, 0.42, 0.12), box(0.1, 0.13, 0.44, M(0xf08a1c), 0, 0.5, 0.34), sph(0.03, M(0x58b7d8), -0.1, 0.52, 0.12), sph(0.03, M(0x58b7d8), 0.1, 0.52, 0.12)); }
 var MK = { narizinho: mkNarizinho, visconde: mkVisconde, rabico: mkRabico, quindim: mkQuindim };
 
-/* ---------- the Sítio ---------- */
+/* ---------- the Sítio: the white house with the veranda, and what the books put around it ---------- */
 var emilia = mkEmilia();
 (function () {
-  var h = H(0, 0), g = new THREE.Group(); g.position.set(0, h, -8); scene.add(g);
+  var h = H(0, 0), g = new THREE.Group(), i, a, x, z; g.position.set(0, h, -8); scene.add(g);
   var wall = M(0xf4efe2), blue = M(0x2a5db0), wood = M(0x6b4a2b);
   g.add(box(16, 4.4, 8, wall, 0, 2.2, 0), box(17, 0.3, 3.6, M(0x9a6b3f), 0, 0.15, 5.6), box(1.4, 2.6, 0.2, blue, 0, 1.3, 4.05));
-  [-5.5, -2.8, 2.8, 5.5].forEach(function (x) { g.add(box(1.3, 1.5, 0.2, blue, x, 2.4, 4.05)); });
+  [-5.5, -2.8, 2.8, 5.5].forEach(function (wx) { g.add(box(1.3, 1.5, 0.2, blue, wx, 2.4, 4.05)); });
   var roof = cone(11.6, 3.4, M(0xb5452c), 0, 6.1, 0.6, 4); roof.rotation.y = Math.PI / 4; roof.scale.set(1, 1, 0.62); g.add(roof);
   g.add(box(17.4, 0.25, 4, M(0xb5452c), 0, 4.1, 5.6));
-  [-8, -4, 4, 8].forEach(function (x) { g.add(cyl(0.14, 0.14, 4, wood, x, 2, 7.2)); });
-  g.add(box(1.2, 2.2, 1.2, M(0x9a4a34), 5, 7.2, -1));
+  [-8, -4, 4, 8].forEach(function (px) { g.add(cyl(0.14, 0.14, 4, wood, px, 2, 7.2)); });
+  g.add(box(1.2, 2.2, 1.2, M(0x9a4a34), 5, 7.2, -1), box(1.1, 0.9, 0.5, wood, -5.6, 0.75, 6.2), box(1.1, 1, 0.08, wood, -5.6, 1.5, 5.95));
   var benta = mkBenta(); benta.position.set(-2.6, 0.3, 5.6); g.add(benta);
   var nast = mkNastacia(); nast.position.set(2.8, 0.3, 5.6); g.add(nast);
-  // sign with the yellow woodpecker
-  var cv = document.createElement('canvas'); cv.width = 512; cv.height = 128; var cx = cv.getContext('2d');
-  cx.fillStyle = '#f5c518'; cx.fillRect(0, 0, 512, 128); cx.strokeStyle = '#14110d'; cx.lineWidth = 10; cx.strokeRect(5, 5, 502, 118);
-  cx.fillStyle = '#14110d'; cx.font = 'bold 40px Georgia, serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText('SÍTIO DO PICAPAU AMARELO', 256, 66, 470);
-  var sg = new THREE.Mesh(new THREE.PlaneGeometry(7, 1.75), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv) })), sg2 = sg.clone();
-  sg.position.set(0, 4.2, 32.02); sg2.position.set(0, 4.2, 31.98); sg2.rotation.y = Math.PI; g.add(sg, sg2, cyl(0.14, 0.14, 5, wood, -3.3, 2.5, 32), cyl(0.14, 0.14, 5, wood, 3.3, 2.5, 32));
-  g.add(sph(0.22, M(0xf5c518), 3.3, 5.2, 32, 1, 1.3, 1), sph(0.14, M(0xd8362f), 3.3, 5.5, 32.08), cone(0.04, 0.22, M(0x14110d), 3.3, 5.48, 32.3, 4));
-  g.children[g.children.length - 1].rotation.x = Math.PI / 2;
-  for (var i = 0; i < 26; i++) { var a = i / 26 * Math.PI * 2; if (Math.abs(Math.sin(a)) > 0.93 && Math.cos(a) < 0.4) continue; var x = Math.cos(a) * 24, z = Math.sin(a) * 24 + 8; if (z > 30 && Math.abs(x) < 5) continue; g.add(box(0.16, 1.1, 0.16, wall, x, 0.55, z)); }
+  // the gate, with the yellow woodpecker on the post
+  var sg = board('SÍTIO DO PICAPAU AMARELO', 7, 1.75, '#f5c518', '#14110d'), beak = cone(0.04, 0.22, M(0x14110d), 3.3, 5.48, 32.3, 4), gate = box(3.1, 1.2, 0.1, wood, -1.9, 0.8, 33.4); sg.position.set(0, 4.2, 32); beak.rotation.x = Math.PI / 2; gate.rotation.y = 1.1;
+  g.add(sg, cyl(0.14, 0.14, 5, wood, -3.3, 2.5, 32), cyl(0.14, 0.14, 5, wood, 3.3, 2.5, 32), sph(0.22, M(0xf5c518), 3.3, 5.2, 32, 1, 1.3, 1), sph(0.14, M(0xd8362f), 3.3, 5.5, 32.08), beak, gate);
+  for (i = 0; i < 26; i++) { a = i / 26 * Math.PI * 2; if (Math.abs(Math.sin(a)) > 0.93 && Math.cos(a) < 0.4) continue; x = Math.cos(a) * 24; z = Math.sin(a) * 24 + 8; if (z > 30 && Math.abs(x) < 5) continue; g.add(box(0.16, 1.1, 0.16, wall, x, 0.55, z)); }
+  // Rabicó's sty, the corral of Mocha and the talking donkey, the hen house, the vegetable patch
+  pen(17, 6, 5); place(cyl(2.2, 2.2, 0.08, M(0x5a4030), 0, 0, 0, 9), 17, 6, 0, 0.04); place(box(1.4, 0.3, 0.5, wood), 17, 4.2, 0, 0.15);
+  pen(-14, 8, 7); place(mkVaca(), -15.2, 7, 1.2); var burro = place(mkBurro(), -12.4, 9.6, 2.4);
+  place(casa(2.6, 1.6, 2.2, 0x9a6b3f, 0xb5452c, 0x3a2414), 19, -9, -1.2);
+  [[17, -6.4, 0xffffff], [18.4, -5.6, 0xb5713a], [16, -7.8, 0xffffff], [19.6, -6.6, 0x2b2b30]].forEach(function (c) { place(mkGalinha(c[2]), c[0], c[1], c[0]); });
+  for (i = 0; i < 4; i++) { place(box(7, 0.25, 0.7, M(0x4a3524)), 13, -15 - i * 1.3, 0, 0.1); for (a = 0; a < 6; a++) place(sph(0.22, M(a % 2 ? 0x4c9a3a : 0x7fbf4a), 0, 0, 0, 1, 0.8, 1), 10.2 + a * 1.1, -15 - i * 1.3, 0, 0.36); }
+  // the big tree with the swing
+  var mx = -17, mz = -8, mh = H(mx, mz); scene.add(cyl(0.6, 0.85, 5, wood, mx, mh + 2.5, mz, 7), sph(4.6, M(0x2c6b25), mx, mh + 7, mz, 1.2, 0.8, 1.2), sph(3.2, M(0x347a2b), mx + 2.6, mh + 6, mz + 1.5), beam(mx, mh + 4.6, mz, mx + 4.6, mh + 4.9, mz + 2.2, 0.16, wood), beam(mx + 3.4, mh + 4.8, mz + 1.6, mx + 3.4, mh + 1, mz + 1.6, 0.02, wood), beam(mx + 4.3, mh + 4.9, mz + 2.05, mx + 4.3, mh + 1, mz + 2.05, 0.02, wood), box(1.1, 0.07, 0.4, wood, mx + 3.85, mh + 1, mz + 1.82));
+  treeGrid['-1,-1'] = (treeGrid['-1,-1'] || []).concat([mx, mz, 0.9]);
+  // jabuticabeiras behind the house, and the corn that gave the Visconde his body
+  for (i = 0; i < 6; i++) { x = -9 + i * 3.8; z = -24 - (i % 2) * 4; var th = H(x, z); scene.add(cyl(0.2, 0.3, 2, M(0x2a1c14), x, th + 1, z, 6), sph(1.5, M(0x1f5a2a), x, th + 2.8, z, 1, 0.8, 1), sph(0.07, M(0x1a0f24), x + 0.26, th + 1.1, z), sph(0.07, M(0x1a0f24), x - 0.2, th + 1.5, z + 0.2), sph(0.07, M(0x1a0f24), x + 0.1, th + 0.7, z - 0.27)); }
+  for (i = 0; i < 40; i++) { x = -34 + (i % 8) * 1.5; z = -30 + Math.floor(i / 8) * 1.8; var chh = H(x, z); scene.add(cyl(0.05, 0.07, 2.4, M(0x7fae3a), x, chh + 1.2, z, 4), sph(0.14, M(0xf2cf3a), x + 0.1, chh + 1.7, z, 0.7, 1.6, 0.7)); }
+  var bn = 0, bl = ['A Cuca prendeu cada um num canto do Sítio: no ribeirão, no pomar, no poço do Visconde e no capoeirão.', 'O Tio Barnabé mora no rancho junto da ponte. O que ele sabe de saci, nenhum livro meu sabe.', 'Na caverna da Cuca só se entra com os quatro de volta. Vá com juízo, meu neto.'];
+  TALK.push({ x: -2.6, z: -2.4, r: 3, label: 'Falar com Dona Benta', fn: function () { say('Dona Benta', bl[bn++ % bl.length]); } });
+  TALK.push({ x: 2.8, z: -2.4, r: 3, label: 'Pedir bolinho à Tia Nastácia', fn: function () { P.hp = P.max; P.ammo = Math.max(P.ammo, 30); sfx(660, 0.15, 'triangle', 0.06, 990); say('Tia Nastácia', 'Bolinho quente, saído agora. Come e vai, que os meninos estão esperando.'); } });
+  TALK.push({ x: -12.4, z: 9.6, r: 3.5, label: 'Ouvir o Burro Falante', fn: function () { say('Conselheiro', ['Prudência, Pedrinho. Um acampamento de cada vez, e o caminho de volta sempre livre.', 'Espantalho enxerga mal quem anda agachado. Boitatá, não: desse se desvia correndo de lado.', 'Quem tem pó de pirlimpimpim não precisa de pressa. Espere eles se juntarem.'][Math.floor(R() * 3)]); } });
   scene.add(emilia);
 })();
 
@@ -402,12 +476,25 @@ OUT.forEach(function (o) {
   o.cage = new THREE.Group(); for (i = 0; i < 10; i++) { a = i / 10 * Math.PI * 2; o.cage.add(cyl(0.05, 0.05, 3, M(0x2b2b30), Math.cos(a) * 1.9, 1.5, Math.sin(a) * 1.9, 5)); }
   o.cage.add(cyl(2, 2, 0.12, M(0x2b2b30), 0, 3, 0, 10)); o.cage.position.set(0, 0, 3); if (o.amigo === 'quindim') o.cage.scale.set(1.5, 1, 1.5); g.add(o.cage);
   o.fig = MK[o.amigo](); o.fig.position.set(o.x, o.h, o.z + 3); if (o.amigo === 'quindim') o.fig.scale.set(0.8, 0.8, 0.8); scene.add(o.fig);
-  if (o.id === 'milharal') for (i = 0; i < 60; i++) { var cxx = o.x + (rnd() - 0.5) * 70, czz = o.z + (rnd() - 0.5) * 70; if (dist2(cxx, czz, o.x, o.z) < 21) continue; var ch = H(cxx, czz); scene.add(cyl(0.05, 0.07, 2.4, M(0x7fae3a), cxx, ch + 1.2, czz, 4), sph(0.14, M(0xf2cf3a), cxx + 0.1, ch + 1.7, czz, 0.7, 1.6, 0.7)); }
-  if (o.id === 'pomar') for (i = 0; i < 26; i++) { var px = o.x + (rnd() - 0.5) * 80, pz = o.z + (rnd() - 0.5) * 80; if (dist2(px, pz, o.x, o.z) < 21) continue; var ph = H(px, pz); scene.add(cyl(0.2, 0.3, 2, M(0x2a1c14), px, ph + 1, pz, 6), sph(1.5, M(0x1f5a2a), px, ph + 2.8, pz, 1, 0.8, 1)); }
+  if (o.id === 'poco') {
+    // the derrick of Caraminguá nº 1
+    var oil = M(0x14110d), tx = 8, tz = -11; [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(function (c) { g.add(beam(tx + c[0] * 2.4, 0, tz + c[1] * 2.4, tx + c[0] * 0.5, 13, tz + c[1] * 0.5, 0.14, wood)); });
+    g.add(box(4.2, 0.14, 4.2, wood, tx, 4.4, tz), box(2.6, 0.14, 2.6, wood, tx, 8.8, tz), box(1.5, 0.3, 1.5, wood, tx, 13, tz), cyl(0.12, 0.12, 13, M(0x55595e), tx, 6.5, tz, 6), cyl(3, 3, 0.05, oil, tx, 0.04, tz, 10), cyl(0.5, 0.5, 1.1, oil, tx + 4, 0.55, tz + 2, 8), cyl(0.5, 0.5, 1.1, M(0x8a1f1f), tx + 5.1, 0.55, tz + 1.4, 8), cyl(0.5, 0.5, 1.1, oil, tx + 4.4, 0.55, tz + 3.2, 8));
+    var pl = board('CARAMINGUÁ Nº 1', 4, 1, '#f6ecd2', '#14110d'); pl.position.set(tx, 2.4, tz + 2.6); g.add(pl);
+  }
+  if (o.id === 'aguas') {
+    // the bank where the stream turns into a kingdom
+    for (i = 0; i < 9; i++) { a = -0.9 + i * 0.22; g.add(sph(0.9 + rnd() * 0.8, M(0x8b9aa3), Math.cos(a) * (15 + rnd() * 3), 0.3, Math.sin(a) * (15 + rnd() * 3), 1, 0.6, 1)); }
+    [[12, -6, 0xff8fb0], [14, 5, 0xffb347], [10, 9, 0xb07cff], [13, -11, 0x58d6c4]].forEach(function (c) { g.add(cone(0.5, 1.6, M(c[2]), c[0], 0.8, c[1], 5), cone(0.3, 1.1, M(c[2]), c[0] + 0.7, 0.55, c[1] + 0.3, 5)); });
+    g.add(sph(1.3, M(0x8b9aa3), 11, 0.4, 1, 1, 0.6, 1)); o.principe = mkPrincipe(); o.principe.position.set(11, 1.1, 1); o.principe.rotation.y = -Math.PI / 2; g.add(o.principe);
+    var got = false; TALK.push({ x: o.x + 11, z: o.z + 1, r: 4, ok: function () { return o.cleared; }, label: 'Falar com o Príncipe Escamado', fn: function () { if (!got) { got = true; P.po = Math.min(6, P.po + 2); sfx(880, 0.1, 'triangle', 0.06, 1320); say('Príncipe Escamado', 'O Reino das Águas Claras agradece, senhor Pedrinho. O Doutor Caramujo manda este pó.'); } else say('Príncipe Escamado', 'A Dona Aranha já está costurando um vestido novo para a Narizinho.'); } });
+  }
+  if (o.id === 'capoeirao') [1, 4, 8, 11, 15].forEach(function (k) { a = k / 18 * Math.PI * 2; var tu = mkTucano(); tu.position.set(Math.cos(a) * 18, 2.9, Math.sin(a) * 18); tu.rotation.y = a + 2; g.add(tu); });
+  if (o.id === 'pomar') for (i = 0; i < 26; i++) { var px = o.x + (rnd() - 0.5) * 80, pz = o.z + (rnd() - 0.5) * 80; if (dist2(px, pz, o.x, o.z) < 21) continue; var ph = H(px, pz); scene.add(cyl(0.2, 0.3, 2, M(0x2a1c14), px, ph + 1, pz, 6), sph(1.5, M(0x1f5a2a), px, ph + 2.8, pz, 1, 0.8, 1), sph(0.07, M(0x1a0f24), px + 0.26, ph + 1.1, pz), sph(0.07, M(0x1a0f24), px - 0.2, ph + 1.5, pz + 0.2), sph(0.07, M(0x1a0f24), px + 0.1, ph + 0.7, pz - 0.27)); }
   for (i = 0; i < o.E + o.B; i++) { a = i / (o.E + o.B) * Math.PI * 2 + 0.4; var rr = 6 + rnd() * 9; mkEnemy(i < o.E ? 'E' : 'B', o, o.x + Math.cos(a) * rr, o.z + Math.sin(a) * rr); }
   mkPickup('pedra', o.x - 9, o.z + 8); mkPickup('pedra', o.x + 10, o.z - 9); mkPickup('po', o.x - 3, o.z - 9); mkPickup('bolinho', o.x + 8, o.z + 9);
 });
-[[12, 20, 'bolinho'], [-12, 22, 'pedra'], [16, 6, 'po'], [-60, 40, 'pedra'], [-70, -20, 'pedra'], [40, -80, 'pedra'], [60, 70, 'bolinho'], [130, 20, 'pedra'], [120, 100, 'bolinho'], [140, 110, 'po'], [-20, -100, 'bolinho'], [-110, 40, 'pedra']].forEach(function (p) { mkPickup(p[2], p[0], p[1]); });
+[[10, 20, 'bolinho'], [-10, 22, 'pedra'], [8, 2, 'po'], [-60, 36, 'pedra'], [-74, 78, 'pedra'], [12, -58, 'pedra'], [66, 34, 'bolinho'], [132, 22, 'pedra'], [150, 62, 'bolinho'], [160, 94, 'po'], [-140, -42, 'bolinho'], [-118, 30, 'pedra'], [-160, 30, 'pedra'], [-170, 22, 'bolinho'], [-168, 34, 'po'], [-158, 18, 'pedra'], [150, -18, 'pedra']].forEach(function (p) { mkPickup(p[2], p[0], p[1]); });
 
 /* ---------- Toca da Cuca ---------- */
 var cuca, barrier, tocaH = H(TOCA.x, TOCA.z);
@@ -420,8 +507,55 @@ var cuca, barrier, tocaH = H(TOCA.x, TOCA.z);
   cuca = mkEnemy('C', TOCA, TOCA.x + 6, TOCA.z + 4);
 })();
 
+/* ---------- the rest of the map: bridge and rancho, arraial, taquaral, cachoeira ---------- */
+var saci = mkSaci(), redemoinho, CACH = { x: riverX(-216), z: -206 }, followers = [{ m: emilia, f: 5, s: -3.4, on: true }, { m: saci, f: 4, s: 3.8, on: false }];
+saci.visible = false; scene.add(saci);
+var PLACES = [
+  { n: 'Sítio do Picapau Amarelo', s: 'A casa branca de Dona Benta · Reinações de Narizinho, 1931', x: 0, z: 10, r: 30 },
+  { n: 'Reino das Águas Claras', s: 'Onde o ribeirão vira reino · Reinações de Narizinho, 1931', x: 52, z: -70, r: 34 },
+  { n: 'Pomar das Jabuticabeiras', s: 'Narizinho chupa, Rabicó come as cascas · Reinações de Narizinho, 1931', x: 15, z: -115, r: 32 },
+  { n: 'Poço do Visconde', s: 'Caraminguá nº 1 · O Poço do Visconde, 1937', x: -80, z: 125, r: 32 },
+  { n: 'Capoeirão dos Tucanos-Vermelhos', s: 'A mata fechada da onça · Caçadas de Pedrinho, 1933', x: 175, z: -60, r: 40 },
+  { n: 'Rancho do Tio Barnabé', s: 'Coberto de sapé, junto da ponte · O Saci, 1921', x: RANCHO.x, z: RANCHO.z, r: 14 },
+  { n: 'Taquaral do Saci', s: 'Saci nasce dentro do gomo da taquara · O Saci, 1921', x: SACI.x, z: SACI.z, r: 22 },
+  { n: 'Cachoeira da Iara', s: 'Quem escuta o canto dela afunda · O Saci, 1921', x: CACH.x, z: CACH.z, r: 26 },
+  { n: 'Caverna da Cuca', s: 'Ela só dorme uma noite a cada sete anos · O Saci, 1921', x: TOCA.x, z: TOCA.z, r: 46 },
+  { n: 'Arraial dos Tucanos', s: 'A vila vizinha, do Coronel Teodorico e da venda do Elias · nome que a TV consagrou', x: ARRAIAL.x, z: ARRAIAL.z, r: 28 }
+];
+function gotSaci(quiet) {
+  flags.saci = true; redemoinho.visible = false; saci.visible = true; followers[1].on = true; P.run = 13.5; P.jump = 10.5;
+  if (!quiet) { saci.position.set(SACI.x, H(SACI.x, SACI.z), SACI.z); burst(SACI.x, H(SACI.x, SACI.z) + 1.5, SACI.z, 0xd8362f, 40, 8); sfx(500, 0.5, 'triangle', 0.1, 1000); banner('O Saci é seu camarada', 'Pulo do Saci: você corre mais e pula mais alto'); say('Saci', 'Tá bom, tá bom! Devolve a carapuça que eu te levo até a Cuca. E corre, que eu tenho uma perna só e ainda chego antes.'); save(); }
+}
+(function () {
+  var wood = M(0x6b4a2b), rock = M(0x6a6f74), i, a;
+  // the bridge over the ribeirão
+  scene.add(box(BR.half * 2, 0.3, 5.6, M(0x8a6238), BR.x, BR.y - 0.15, BR.z), box(BR.half * 2, 0.12, 0.12, wood, BR.x, BR.y + 1.05, BR.z - 2.7), box(BR.half * 2, 0.12, 0.12, wood, BR.x, BR.y + 1.05, BR.z + 2.7));
+  for (i = -BR.half; i <= BR.half; i += 6) { var bx = BR.x + i, gh = H(bx, BR.z); scene.add(box(0.2, 1.1, 0.2, wood, bx, BR.y + 0.55, BR.z - 2.7), box(0.2, 1.1, 0.2, wood, bx, BR.y + 0.55, BR.z + 2.7)); if (gh < BR.y - 1) scene.add(beam(bx, gh - 0.5, BR.z - 2.4, bx, BR.y, BR.z - 2.4, 0.16, wood), beam(bx, gh - 0.5, BR.z + 2.4, bx, BR.y, BR.z + 2.4, 0.16, wood)); }
+  // Tio Barnabé's rancho
+  place(casa(4.6, 2.3, 3.6, 0xa9825a, 0xc9a94e, 0x3a2414), RANCHO.x, RANCHO.z - 1, 0.3); place(cyl(0.35, 0.4, 0.5, wood, 0, 0, 0), RANCHO.x + 2.5, RANCHO.z + 3.5, 0, 0.25); place(mkBarnabe(), RANCHO.x + 0.5, RANCHO.z + 4, 0.2);
+  TALK.push({ x: RANCHO.x + 0.5, z: RANCHO.z + 4, r: 4, label: 'Falar com Tio Barnabé', fn: function () {
+    if (flags.saci) return say('Tio Barnabé', 'Saci preso vira camarada. E esse aí conhece o caminho da caverna da Cuca.');
+    if (!flags.pen) { flags.pen = true; save(); sfx(520, 0.2, 'triangle', 0.07, 780); banner('Peneira de cruzeta', 'Jogue no redemoinho do taquaral para pegar o Saci'); }
+    say('Tio Barnabé', 'Saci se pega em dia de vento, menino. Peneira de cruzeta em cima do redemoinho, e ele é seu.'); say('Tio Barnabé', 'Leva a minha. O taquaral fica no poente, depois da estrada do arraial.');
+  } });
+  // the Saci's bamboo grove and its whirlwind
+  redemoinho = cyl(1.7, 0.25, 4.5, new THREE.MeshBasicMaterial({ color: 0xd9c79a, transparent: true, opacity: 0.42, depthWrite: false }), SACI.x, H(SACI.x, SACI.z) + 2.25, SACI.z, 9); scene.add(redemoinho);
+  TALK.push({ x: SACI.x, z: SACI.z, r: 5, ok: function () { return !flags.saci; }, label: 'Pegar o redemoinho', fn: function () { if (!flags.pen) say('Emília', 'Redemoinho de saci! Com a mão não pega. O Tio Barnabé, lá no rancho da ponte, sabe como.'); else gotSaci(false); } });
+  // Arraial dos Tucanos: chapel, venda, a few houses round the square
+  var ax = ARRAIAL.x, az = ARRAIAL.z, ah = H(ax, az), cap = casa(6, 4.6, 9, 0xf4efe2, 0xb5452c); place(cap, ax, az - 15);
+  scene.add(box(2.4, 8.5, 2.4, M(0xf4efe2), ax, ah + 4.25, az - 10.2), cone(2, 2.4, M(0xb5452c), ax, ah + 9.7, az - 10.2, 4), box(0.16, 1.3, 0.16, wood, ax, ah + 11.4, az - 10.2), box(0.8, 0.16, 0.16, wood, ax, ah + 11.6, az - 10.2), box(1, 2.2, 0.14, M(0x2a5db0), ax, ah + 1.1, az - 8.95));
+  place(casa(8, 3.4, 6, 0xe8c9a0, 0xb5452c, 0x6b4a2b), ax - 13, az + 5, Math.PI / 2); var vs = board('VENDA DO ELIAS', 4.4, 0.9, '#f6ecd2', '#8a1f1f'); vs.position.set(ax - 9.9, ah + 2.9, az + 5); vs.rotation.y = Math.PI / 2; scene.add(vs);
+  [[13, -6, 0xf2cf3a, -1.57], [14, 6, 0x7fb6e6, -1.57], [5, 15, 0xf2a3bd, 3.14], [-8, 16, 0x9ad08a, 3.14]].forEach(function (c) { place(casa(5, 3, 5, c[2], 0x9a4a34), ax + c[0], az + c[1], c[3]); });
+  scene.add(cyl(2.6, 2.8, 0.5, M(0xd9d2c0), ax, ah + 0.25, az + 3, 8), cone(3, 1.4, M(0x9a4a34), ax, ah + 3.9, az + 3, 8)); for (i = 0; i < 6; i++) { a = i / 6 * 6.283; scene.add(cyl(0.08, 0.08, 2.8, wood, ax + Math.cos(a) * 2.3, ah + 1.9, az + 3 + Math.sin(a) * 2.3, 5)); }
+  place(mkCoronel(), ax + 4, az + 6, -0.6);
+  TALK.push({ x: ax + 4, z: az + 6, r: 3.5, label: 'Falar com o Coronel Teodorico', fn: function () { say('Coronel Teodorico', ['Compadre Pedrinho! A Cuca espantou a freguesia do Elias. O que tiver na praça é seu, fica por conta do arraial.', 'Diga à comadre Benta que o arraial inteiro torce pelo Sítio.'][Math.floor(R() * 2)]); } });
+  // the waterfall where the Iara sings
+  var cx = CACH.x; scene.add(sph(11, rock, cx - 11, 8, -231, 1, 1.4, 1), sph(12, M(0x5c6166), cx + 11, 9, -232, 1, 1.4, 1), sph(9, rock, cx, 5, -236, 1.7, 1.8, 1), box(7, 26, 1, new THREE.MeshBasicMaterial({ color: 0xd8f3fb, transparent: true, opacity: 0.85 }), cx, 11, -226), sph(2, rock, cx - 6, 0, CACH.z, 1, 0.7, 1));
+  var ia = mkIara(); ia.position.set(cx - 6, 1.2, CACH.z); ia.rotation.y = 0.6; scene.add(ia);
+})();
+
 /* ---------- player + view model ---------- */
-var P = { x: 0, z: 36, y: 0, vy: 0, yaw: 0, pitch: 0, hp: 100, max: 100, ammo: 30, po: 2, dmg: 34, eye: 1.7, crouch: false, ground: true, lastHurt: -99, dead: false, cd: 0, bob: 0, qcd: 0 };
+var P = { x: 0, z: 36, y: 0, vy: 0, yaw: 0, pitch: 0, hp: 100, max: 100, ammo: 30, po: 2, dmg: 34, eye: 1.7, crouch: false, ground: true, lastHurt: -99, dead: false, cd: 0, bob: 0, qcd: 0, run: 11, jump: 8.6 };
 var perks = {}, won = false, stats = { t: 0, tiros: 0, baixas: 0 };
 var vm = new THREE.Group();
 (function () { var w = M(0x7a5230), l = cyl(0.016, 0.02, 0.2, w, -0.055, 0.14, 0), r = cyl(0.016, 0.02, 0.2, w, 0.055, 0.14, 0); l.rotation.z = 0.35; r.rotation.z = -0.35; vm.add(cyl(0.022, 0.026, 0.2, w, 0, -0.02, 0), l, r, box(0.17, 0.012, 0.012, M(0x8a1f1f), 0, 0.22, 0.02), sph(0.04, M(0xe9b890), 0, -0.12, 0, 1.2, 1, 1.4)); vm.scale.set(0.62, 0.62, 0.62); vm.position.set(0.25, -0.21, -0.5); vm.rotation.set(0.1, -0.15, 0); camera.add(vm); })();
@@ -441,7 +575,7 @@ function sfx(f, d, type, v, f2) { if (!AC) return; try { var t = AC.currentTime,
 
 /* ---------- HUD ---------- */
 var subQ = [], subT = 0, bannerT = 0, hitT = 0, promptAct = null;
-var CORES = { 'Emília': '#f5c518', 'Dona Benta': '#b9c7ff', 'Cuca': '#c58bff', 'Tia Nastácia': '#8fe0c8' };
+var CORES = { 'Emília': '#f5c518', 'Dona Benta': '#b9c7ff', 'Cuca': '#c58bff', 'Tia Nastácia': '#8fe0c8', 'Tio Barnabé': '#e8cfa0', 'Saci': '#ff7a66', 'Iara': '#7fe0c0', 'Conselheiro': '#cfc8bd', 'Coronel Teodorico': '#f6ecd2', 'Príncipe Escamado': '#8fd0f0' };
 function say(who, text, dur) { if (subQ.length > 3) subQ.splice(1, 1); subQ.push({ w: who, t: text, d: dur || Math.max(2.6, text.length * 0.055) }); }
 function banner(t, s) { $('banner').innerHTML = ''; $('banner').appendChild(document.createTextNode(t)); if (s) { var sm = document.createElement('small'); sm.textContent = s; $('banner').appendChild(sm); } $('banner').hidden = false; bannerT = 4.5; }
 function hudSubs(dt) {
@@ -456,6 +590,9 @@ function drawMap() {
   var c = mapC, S = 264, k = S / 520, m = S / 2, z;
   c.clearRect(0, 0, S, S); c.fillStyle = '#2f5a26'; c.beginPath(); c.arc(m, m, m, 0, 7); c.fill();
   c.strokeStyle = '#58b7d8'; c.lineWidth = 7; c.beginPath(); for (z = -260; z <= 260; z += 20) c.lineTo(m + riverX(z) * k, m + z * k); c.stroke();
+  c.strokeStyle = '#b89b6a'; c.lineWidth = 3; ROADS.forEach(function (rd) { c.beginPath(); rd.forEach(function (q) { c.lineTo(m + q[0] * k, m + q[1] * k); }); c.stroke(); });
+  c.beginPath(); c.moveTo(m + (BR.x - BR.half) * k, m + BR.z * k); c.lineTo(m + (BR.x + BR.half) * k, m + BR.z * k); c.stroke();
+  [[RANCHO, '#c9a94e'], [ARRAIAL, '#f6ecd2'], [SACI, '#9fe05a'], [CACH, '#d8f3fb']].forEach(function (q) { c.fillStyle = q[1]; c.fillRect(m + q[0].x * k - 5, m + q[0].z * k - 5, 10, 10); });
   c.fillStyle = '#f5c518'; c.fillRect(m - 7, m - 7, 14, 14);
   OUT.forEach(function (o) { c.fillStyle = o.freed ? '#f5c518' : '#b56bff'; c.strokeStyle = '#14110d'; c.lineWidth = 3; c.beginPath(); c.arc(m + o.x * k, m + o.z * k, 9, 0, 7); c.fill(); c.stroke(); });
   c.fillStyle = won ? '#f5c518' : '#b56bff'; c.save(); c.translate(m + TOCA.x * k, m + TOCA.z * k); c.rotate(Math.PI / 4); c.fillRect(-9, -9, 18, 18); c.restore();
@@ -471,14 +608,15 @@ function hudObjective() {
   else { t = 'Enfrente a Cuca'; d = TOCA.nome + ' · ' + Math.round(dist2(P.x, P.z, TOCA.x, TOCA.z)) + ' m'; }
   $('objT').textContent = t; $('objD').textContent = d;
 }
+function discover() { if (bannerT > 0) return; for (var i = 0; i < PLACES.length; i++) { var pl = PLACES[i]; if (!pl.seen && dist2(P.x, P.z, pl.x, pl.z) < pl.r) { pl.seen = true; banner(pl.n, pl.s); sfx(330, 0.3, 'sine', 0.05, 495); return; } } }
 function hudStats() {
   $('barraI').style.width = Math.max(0, P.hp / P.max * 100) + '%'; $('nPed').textContent = P.ammo; $('nPo').textContent = 'Pó: ' + P.po;
   if (perks.quindim) { $('nQ').hidden = false; $('nQ').textContent = P.qcd > 0 ? 'Quindim: ' + Math.ceil(P.qcd) + ' s' : 'Quindim: pronto'; }
 }
 
 /* ---------- save ---------- */
-var KEY = 'retomada-do-sitio-v1';
-function save() { try { localStorage.setItem(KEY, JSON.stringify({ f: OUT.filter(function (o) { return o.freed; }).map(function (o) { return o.id; }), w: won })); } catch (e) {} }
+var KEY = 'retomada-do-sitio-v2';
+function save() { try { localStorage.setItem(KEY, JSON.stringify({ f: OUT.filter(function (o) { return o.freed; }).map(function (o) { return o.id; }), w: won, p: !!flags.pen, s: !!flags.saci })); } catch (e) {} }
 function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
 
 /* ---------- game logic ---------- */
@@ -495,7 +633,7 @@ function liberate(o, quiet) {
   var a = AMIGO[o.amigo]; addPerk(o.amigo, quiet);
   if (quiet) { o.fig.position.set(a.casa[0], H(a.casa[0], a.casa[1]), a.casa[1]); } else { o.goHome = 5; burst(o.x, o.h + 1.5, o.z + 3, 0xf5c518, 40, 7); sfx(520, 0.5, 'triangle', 0.1, 1040); say(a.nome, a.fala); }
   hudFriends();
-  if (OUT.every(function (x) { return x.freed; })) { barrier.visible = false; if (!quiet) { say('Emília', 'Os quatro soltos! A barreira da Toca caiu. Agora é a jacaroa.'); } }
+  if (OUT.every(function (x) { return x.freed; })) { barrier.visible = false; if (!quiet) { say('Emília', 'Os quatro soltos! A barreira da caverna caiu. Agora é a jacaroa.'); } }
   if (!quiet) save();
 }
 function alertOut(o) { if (o.alert) return; o.alert = true; o.enemies.forEach(function (e) { if (e.alive) e.state = 'chase'; }); sfx(180, 0.4, 'sawtooth', 0.07, 320); if (o === TOCA) say('Cuca', 'Menino atrevido! Vou te transformar em pedra de bodoque!'); else if (R() < 0.6) say('Emília', ['Fomos vistos! Mete pedra, Pedrinho!', 'Lá vêm os espantalhos. Mira no saco de estopa!', 'Acordou o acampamento inteiro. Parabéns.'][Math.floor(R() * 3)]); }
@@ -579,7 +717,7 @@ function updEnemies(dt) {
 function updPlayer(dt) {
   var f = (K.KeyW || K.ArrowUp ? 1 : 0) - (K.KeyS || K.ArrowDown ? 1 : 0) + T.f, s = (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0) + T.s, l = Math.sqrt(f * f + s * s);
   if (l > 1) { f /= l; s /= l; }
-  var run = (K.ShiftLeft || K.ShiftRight || l > 1.05 || T.run) && !P.crouch && f > 0, inWater = P.y < WATER - 0.25, sp = (P.crouch ? 3.4 : run ? 11 : 7) * (inWater ? 0.55 : 1);
+  var run = (K.ShiftLeft || K.ShiftRight || l > 1.05 || T.run) && !P.crouch && f > 0, inWater = P.y < WATER - 0.25, sp = (P.crouch ? 3.4 : run ? P.run : 7) * (inWater ? 0.55 : 1);
   var sy = Math.sin(P.yaw), cy = Math.cos(P.yaw), nx = P.x + (-sy * f + cy * s) * sp * dt, nz = P.z + (-cy * f - sy * s) * sp * dt;
   // trees
   var gx = Math.floor(nx / 20), gz = Math.floor(nz / 20);
@@ -589,8 +727,8 @@ function updPlayer(dt) {
   var dc = Math.sqrt(nx * nx + nz * nz); if (dc > 240) { nx *= 240 / dc; nz *= 240 / dc; }
   if (barrier.visible) { var db = dist2(nx, nz, TOCA.x, TOCA.z); if (db < 34.5) { nx = TOCA.x + (nx - TOCA.x) / db * 34.5; nz = TOCA.z + (nz - TOCA.z) / db * 34.5; if (time - toldBarrier > 12) { toldBarrier = time; say('Emília', 'Feitiço de jacaroa. Só cai com os quatro soltos. Vamos buscar o pessoal.'); } } }
   P.x = nx; P.z = nz;
-  var g = H(P.x, P.z); P.vy -= 26 * dt; P.y += P.vy * dt; if (P.y <= g) { P.y = g; P.vy = 0; P.ground = true; } else P.ground = false;
-  if ((K.Space || T.jump) && P.ground) { P.vy = 8.6; P.ground = false; T.jump = false; }
+  var g = GH(P.x, P.z, P.y); P.vy -= 26 * dt; P.y += P.vy * dt; if (P.y <= g) { P.y = g; P.vy = 0; P.ground = true; } else P.ground = false;
+  if ((K.Space || T.jump) && P.ground) { P.vy = P.jump; P.ground = false; T.jump = false; }
   var te = P.crouch ? 1.05 : 1.7; P.eye += (te - P.eye) * Math.min(1, dt * 10);
   if (l > 0.1 && P.ground) P.bob += dt * sp * 1.5;
   camera.position.set(P.x, P.y + P.eye + Math.sin(P.bob) * 0.045, P.z); camera.rotation.set(P.pitch, P.yaw, 0);
@@ -610,22 +748,30 @@ function updWorld(dt) {
   // cages + freed friends
   promptAct = null;
   OUT.forEach(function (o) {
-    if (o.cleared && !o.freed && dist2(P.x, P.z, o.x, o.z + 3) < 5.5) promptAct = o;
+    if (o.cleared && !o.freed && dist2(P.x, P.z, o.x, o.z + 3) < 5.5) promptAct = { label: 'Soltar ' + AMIGO[o.amigo].nome, fn: function () { liberate(o); } };
     if (o.goHome > 0) { o.goHome -= dt; o.fig.position.y = o.h + Math.abs(Math.sin(time * 7)) * 0.3; o.fig.rotation.y += dt * 3; if (o.goHome <= 0) { var c = AMIGO[o.amigo].casa; burst(o.fig.position.x, o.h + 1, o.fig.position.z, 0xf5c518, 24, 6); o.fig.position.set(c[0], H(c[0], c[1]), c[1]); o.fig.rotation.y = 0; } }
     if (!o.freed) o.beamMat.opacity = 0.16 + Math.sin(time * 2 + o.x) * 0.05;
   });
-  $('prompt').hidden = !promptAct; if (promptAct) $('prompt').textContent = (touchOn ? 'Toque em Soltar: ' : 'E — Soltar ') + AMIGO[promptAct.amigo].nome; if (touchOn) $('tAct').hidden = !promptAct;
-  // Emília tags along
-  var ex = P.x - Math.sin(P.yaw) * 5 - Math.cos(P.yaw) * 3.4, ez = P.z - Math.cos(P.yaw) * 5 + Math.sin(P.yaw) * 3.4, ep = emilia.position, mv = dist2(ep.x, ep.z, ex, ez);
-  if (mv > 40) { ep.x = ex; ep.z = ez; } else if (mv > 0.4) { ep.x += (ex - ep.x) * Math.min(1, dt * 2.6); ep.z += (ez - ep.z) * Math.min(1, dt * 2.6); }
-  ep.y = Math.max(H(ep.x, ep.z), WATER) + (mv > 0.5 ? Math.abs(Math.sin(time * 11)) * 0.22 : 0); emilia.rotation.y = Math.atan2(P.x - ep.x, P.z - ep.z);
+  for (var ti = 0; !promptAct && ti < TALK.length; ti++) { var tk = TALK[ti]; if (dist2(P.x, P.z, tk.x, tk.z) < tk.r && (!tk.ok || tk.ok())) promptAct = tk; }
+  $('prompt').hidden = !promptAct; if (promptAct) $('prompt').textContent = (touchOn ? 'Toque em Ação: ' : 'E — ') + promptAct.label; if (touchOn) $('tAct').hidden = !promptAct;
+  // Emília tags along; so does the Saci once caught
+  for (var fi = 0; fi < followers.length; fi++) {
+    var fo = followers[fi]; if (!fo.on) continue;
+    var ex = P.x - Math.sin(P.yaw) * fo.f + Math.cos(P.yaw) * fo.s, ez = P.z - Math.cos(P.yaw) * fo.f - Math.sin(P.yaw) * fo.s, ep = fo.m.position, mv = dist2(ep.x, ep.z, ex, ez);
+    if (mv > 40) { ep.x = ex; ep.z = ez; } else if (mv > 0.4) { ep.x += (ex - ep.x) * Math.min(1, dt * 2.6); ep.z += (ez - ep.z) * Math.min(1, dt * 2.6); }
+    ep.y = Math.max(GH(ep.x, ep.z, P.y), WATER) + (mv > 0.5 || fi ? Math.abs(Math.sin(time * (fi ? 7 : 11))) * 0.22 : 0); fo.m.rotation.y = Math.atan2(P.x - ep.x, P.z - ep.z);
+  }
+  if (redemoinho.visible) { redemoinho.rotation.y += dt * 9; redemoinho.position.x = SACI.x + Math.sin(time * 0.7) * 1.5; redemoinho.position.z = SACI.z + Math.cos(time * 0.9) * 1.5; if (R() < 0.3) burst(redemoinho.position.x, redemoinho.position.y - 1.5, redemoinho.position.z, 0xc9b98a, 1, 5); }
+  if (R() < 0.5) burst(CACH.x + (R() - 0.5) * 6, 0.4, -224.5, 0xffffff, 1, 4);
+  var di = dist2(P.x, P.z, CACH.x - 6, CACH.z);
+  if (di < 17 && di > 2.5 && !P.dead) { P.x += (CACH.x - 6 - P.x) / di * 1.5 * dt; P.z += (CACH.z - P.z) / di * 1.5 * dt; if (time - (flags.iaraT || -99) > 25) { flags.iaraT = time; say('Iara', 'Vem, menino... a água está tão boa...'); say('Emília', 'Tapa o ouvido e anda pra trás, Pedrinho! Iara canta e a gente afunda.'); } }
   // particles
   for (var k = 0; k < PN; k++) if (pLife[k] > 0) { pLife[k] -= dt; pVel[k * 3 + 1] -= 9 * dt; pPos[k * 3] += pVel[k * 3] * dt; pPos[k * 3 + 1] += pVel[k * 3 + 1] * dt; pPos[k * 3 + 2] += pVel[k * 3 + 2] * dt; if (pLife[k] <= 0) pPos[k * 3 + 1] = -999; }
   pGeo.attributes.position.needsUpdate = true; pGeo.attributes.color.needsUpdate = true;
   if (barrier.visible) barrier.rotation.y += dt * 0.1;
-  idleQ -= dt; if (idleQ <= 0 && subT <= 0 && !subQ.length) { idleQ = 40 + R() * 30; var anyAlert = TOCA.alert || OUT.some(function (o) { return o.alert; }); if (!anyAlert && !won) say('Emília', ['Fumaça roxa no céu é acampamento da Cuca. Fumaça nenhuma é serviço feito.', 'Agacha que espantalho enxerga mal. Eu que costurei o olho de um, sei do que falo.', 'Se a pedra acabar, volta no Sítio. A Tia Nastácia enche o embornal.', 'Guarda o pó de pirlimpimpim pra quando juntar muito capanga.', 'O ribeirão dá pé. Só anda devagar lá dentro.'][Math.floor(R() * 5)]); }
+  idleQ -= dt; if (idleQ <= 0 && subT <= 0 && !subQ.length) { idleQ = 40 + R() * 30; var anyAlert = TOCA.alert || OUT.some(function (o) { return o.alert; }); if (!anyAlert && !won) say('Emília', ['Fumaça roxa no céu é acampamento da Cuca. Fumaça nenhuma é serviço feito.', 'Estrada de terra sempre dá em algum lugar. A da ponte passa no rancho do Tio Barnabé.', 'Agacha que espantalho enxerga mal. Eu que costurei o olho de um, sei do que falo.', 'Se a pedra acabar, volta no Sítio. A Tia Nastácia enche o embornal.', 'Guarda o pó de pirlimpimpim pra quando juntar muito capanga.', 'O ribeirão dá pé. Só anda devagar lá dentro.'][Math.floor(R() * 6)]); }
 }
-function interact() { if (promptAct && state === 'play') liberate(promptAct); }
+function interact() { if (promptAct && state === 'play') promptAct.fn(); }
 
 /* ---------- input ---------- */
 var K = {}, T = { f: 0, s: 0, jump: false, run: false }, firing = false, dragLook = false, dragging = false, touchOn = coarse;
@@ -669,7 +815,7 @@ function resetAll() { try { localStorage.removeItem(KEY); } catch (e) {} locatio
 $('bStart').addEventListener('click', start); $('bResume').addEventListener('click', resume); $('bReset').addEventListener('click', resetAll); $('bAgain').addEventListener('click', resetAll);
 $('bRoam').addEventListener('click', function () { showOnly(null); state = 'play'; lock(); });
 if (touchOn) $('ajuda').innerHTML = '<span><kbd>Esquerda</kbd>arraste para andar (até o fim para correr)</span><span><kbd>Direita</kbd>arraste para mirar</span><span><kbd>Botões</kbd>atirar, pó, pulo, agachar</span>';
-(function () { var s = load(); (s.f || []).forEach(function (id) { OUT.forEach(function (o) { if (o.id === id) liberate(o, true); }); }); if (s.w) { won = true; cuca.alive = false; cuca.mesh.visible = false; } if ((s.f || []).length) { $('bStart').textContent = 'Continuar'; $('bReset').hidden = false; } hudFriends(); })();
+(function () { var s = load(); (s.f || []).forEach(function (id) { OUT.forEach(function (o) { if (o.id === id) liberate(o, true); }); }); if (s.w) { won = true; cuca.alive = false; cuca.mesh.visible = false; } flags.pen = !!s.p; if (s.s) gotSaci(true); if ((s.f || []).length) { $('bStart').textContent = 'Continuar'; $('bReset').hidden = false; } hudFriends(); })();
 
 function resize() { var w = canvas.clientWidth || window.innerWidth, h = canvas.clientHeight || window.innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = w < h ? 88 : 75; camera.updateProjectionMatrix(); }
 window.addEventListener('resize', resize); resize();
@@ -683,7 +829,7 @@ function loop(now) {
     if (P.dead) { P.deadT -= dt; if (P.deadT <= 0) respawn(); } else updPlayer(dt);
     updEnemies(dt); updProjs(dt); updWorld(dt); hudSubs(dt);
     if (P.winT > 0) { P.winT -= dt; if (P.winT <= 0) { state = 'end'; firing = false; if (document.exitPointerLock && document.pointerLockElement) document.exitPointerLock(); $('endT').textContent = 'Você levou ' + Math.floor(stats.t / 60) + ' min ' + Math.floor(stats.t % 60) + ' s, gastou ' + stats.tiros + ' pedras e mandou ' + stats.baixas + ' capangas de volta pro feitiço. Narizinho, o Visconde, Rabicó e o Quindim já estão na varanda.'; showOnly('end'); } }
-    if (frame++ % 4 === 0) { drawMap(); hudObjective(); hudStats(); }
+    if (frame++ % 4 === 0) { drawMap(); hudObjective(); hudStats(); discover(); }
   } else if (state === 'menu') { time += dt; camera.position.set(Math.sin(time * 0.07) * 46, H(0, 0) + 15, Math.cos(time * 0.07) * 46 + 4); camera.lookAt(0, H(0, 0) + 3, -4); }
   renderer.render(scene, camera);
 }
