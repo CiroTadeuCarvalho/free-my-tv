@@ -28,16 +28,24 @@ OBJECOES_NOVAS: nenhuma
 
 Se tiver objeção que AINDA NÃO está no quadro, troque a última linha por:
 OBJECOES_NOVAS:
-- uma objeção por linha, curta e verificável
+- uma objeção por linha: o que dá errado, e o que resolveria
 
+Só é objeção o que, sendo verdade, muda a decisão. Estilo, detalhe de execução
+e melhoria opcional vão na Posição, não aqui. Prefira uma objeção forte a
+várias fracas. Cada uma precisa se sustentar no que está no quadro ou em fato
+que você consegue apontar; se depender de suposição, diga que é suposição.
 Repetir objeção que já está no quadro não conta como nova. Não invente objeção
 para parecer rigoroso, e não esconda uma para acabar logo."""
 
 REPLICA = """
 ## Réplica
-(obrigatória: ataque o ponto mais fraco do que os outros assentos disseram nesta
-rodada. Diga o que quebraria a posição deles. Concordar por educação é proibido;
-se depois do ataque a posição ficar de pé, diga isso no Veredito.)
+(obrigatória. Seu trabalho aqui é quebrar a confiança na posição dos outros
+assentos, não validá-la. Parta do ceticismo: a posição falha até a evidência
+dizer o contrário. Não dê crédito por boa intenção, por conserto pela metade
+nem por "depois a gente ajusta"; o que só funciona quando tudo dá certo é
+fraqueza. Procure o que sai caro, o que não tem volta e o que falharia sem
+ninguém perceber. Seja agressivo e fique no chão: não invente fato. Se depois do
+ataque a posição ficar de pé, diga isso com todas as letras.)
 """
 
 
@@ -53,15 +61,16 @@ def analisar(texto, replica):
         return {"valida": False, "motivo": "falta a seção Raciocínio"}
     if replica and not secao("R[ée]plica"):
         return {"valida": False, "motivo": "falta a seção Réplica, que é obrigatória neste assento"}
-    pos = re.findall(r"^POSICAO:\s*(concordo|discordo)\b", texto, re.M | re.I)
+    # Aceita as grafias que os modelos usam: POSIÇÃO, **POSICAO**:, "- POSICAO: ...".
+    pos = re.findall(r"^[\s>*_\-]*POSI[CÇ][AÃ]O[\s*_]*:[\s*_]*(concordo|discordo)\b", texto, re.M | re.I)
     if not pos:
         return {"valida": False, "motivo": "falta a linha POSICAO: concordo|discordo"}
-    m = list(re.finditer(r"^OBJECOES_NOVAS:[ \t]*(.*)$", texto, re.M | re.I))
+    m = list(re.finditer(r"^[\s>*_\-]*OBJE[CÇ][OÕ]ES[_ ]NOVAS[ \t*_]*:[ \t*_]*(.*)$", texto, re.M | re.I))
     if not m:
         return {"valida": False, "motivo": "falta a linha OBJECOES_NOVAS:"}
     m = m[-1]
     objecoes = []
-    if norm(m.group(1)) not in ("nenhuma", "nenhum", "nao", "não"):
+    if norm(m.group(1)).rstrip(". ") not in ("nenhuma", "nenhum", "nao", "não"):
         if m.group(1).strip():
             objecoes.append(m.group(1).strip())
         for linha in texto[m.end():].splitlines():
@@ -278,8 +287,14 @@ def _escalar(quadro, ident, cfg, rodada, motivo, log):
     return "escalada"
 
 
-def rodada_unica(quadro, ident, cfg, rodada, log):
-    """Roda uma rodada. Devolve None para seguir, ou o motivo para escalar."""
+def rodada_unica(quadro, ident, cfg, rodada, log, fora=None):
+    """Roda uma rodada. Devolve None para seguir, ou o motivo para escalar.
+
+    `fora` guarda os assentos que pararam de ser chamados nesta execução: quem
+    caiu por cota, ou caiu vezes seguidas. Cota não volta em minutos, então
+    insistir só gasta tempo; `wr continuar` tenta todos de novo.
+    """
+    fora = {} if fora is None else fora
     comuns = [a for a in cfg.assentos if not a.replica]
     giro = (rodada - 1) % len(comuns) if comuns else 0
     ordem = comuns[giro:] + comuns[:giro] + [a for a in cfg.assentos if a.replica]
@@ -290,9 +305,25 @@ def rodada_unica(quadro, ident, cfg, rodada, log):
         if ja:                        # retomada, ou fala entregue de fora
             cabs[assento.id] = ja[0]
             continue
+        if assento.id in fora:
+            cab = {"rodada": rodada, "assento": assento.id, "nome": assento.nome, "ordem": "%02d" % i,
+                   "estado": "caido", "motivo": "não chamado: " + fora[assento.id], "cota": "nao"}
+            Q.gravar(quadro, ident, nome, cab, "Não chamado nesta rodada: %s" % fora[assento.id],
+                     "%s r%02d: %s fora" % (ident, rodada, assento.id))
+            log("  %s: fora (%s)" % (assento.nome, fora[assento.id]))
+            cabs[assento.id] = cab
+            continue
         est = estado(quadro, ident, cfg)
         texto = texto_quadro(quadro, ident, cfg, est, log)
         cabs[assento.id] = _falar(quadro, ident, cfg, assento, est, rodada, texto, assento.replica, nome, i, log)
+        if cabs[assento.id]["estado"] == "caido" and assento.tipo == "cli":
+            seguidas, r = 1, rodada - 1
+            while r > 0 and ((Q.ler(quadro, ident, "r%02d-%s.md" % (r, assento.id)) or ({},))[0]).get("estado") == "caido":
+                seguidas, r = seguidas + 1, r - 1
+            if cabs[assento.id].get("cota") == "sim":
+                fora[assento.id] = "sem cota desde a rodada %d" % rodada
+            elif seguidas >= cfg.quedas_seguidas:
+                fora[assento.id] = "caiu %d rodadas seguidas" % seguidas
         if cabs[assento.id]["estado"] == "caido" and cfg.assento_caido == "pausa":
             pausa = "%s caiu (%s) e a regra é pausar" % (assento.nome, cabs[assento.id]["motivo"][:80])
             break
@@ -382,15 +413,27 @@ def _executar(quadro, ident, cfg, decisao, log):
         codigo, saida = -1, str(e)
     corpo = "## Raciocínio\n\nA decisão foi entregue ao braço de execução (`%s`), que terminou com código %d.\n\n" \
             "## Saída\n\n```\n%s\n```\n" % (" ".join(cfg.execucao), codigo, saida.strip()[-20000:])
+    conferido = "sem verificação"
+    if cfg.verificacao:
+        # Quem executa não julga o próprio trabalho: só vale se um comando que ele não escreveu passar.
+        try:
+            v = subprocess.run(cfg.verificacao, capture_output=True, text=True, timeout=cfg.execucao_limite,
+                               encoding="utf-8", errors="replace")
+            vc, vs = v.returncode, v.stdout + ("\n" + v.stderr if v.stderr.strip() else "")
+        except (OSError, subprocess.TimeoutExpired) as e:
+            vc, vs = -1, str(e)
+        conferido = "passou" if vc == 0 and codigo == 0 else "FALHOU"
+        corpo += "\n## Verificação (`%s`): %s\n\n```\n%s\n```\n" % (" ".join(cfg.verificacao), conferido, vs.strip()[-8000:])
+        log("verificação: %s" % conferido)
     with open(os.path.join(Q.pasta(quadro, ident), "EXECUCAO.md"), "w", encoding="utf-8") as f:
-        f.write(Q.montar({"deliberacao": ident, "codigo": codigo}, corpo))
+        f.write(Q.montar({"deliberacao": ident, "codigo": codigo, "verificacao": conferido}, corpo))
     Q.commit(quadro, "%s: execução (código %d)" % (ident, codigo), os.path.join(Q.DIR, ident, "EXECUCAO.md"))
     log("execução terminou com código %d" % codigo)
 
 
 def rodar(quadro, ident, cfg, log=print, max_rodadas=None):
     """Roda rodadas até o consenso, a escalada ou max_rodadas. Devolve a fase."""
-    feitas = 0
+    feitas, fora = 0, {}
     while True:
         est = estado(quadro, ident, cfg)
         if est["fase"] == "fechada":
@@ -408,7 +451,7 @@ def rodar(quadro, ident, cfg, log=print, max_rodadas=None):
             return "aberta"
         rodada = est["ultima"] + 1
         log("Rodada %d" % rodada)
-        motivo = rodada_unica(quadro, ident, cfg, rodada, log)
+        motivo = rodada_unica(quadro, ident, cfg, rodada, log, fora)
         feitas += 1
         if motivo:
             return _escalar(quadro, ident, cfg, rodada, motivo, log)

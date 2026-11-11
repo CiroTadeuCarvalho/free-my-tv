@@ -42,11 +42,13 @@ class Config:
     disjuntor: int = 20
     quorum: int = 3
     assento_caido: str = "segue"  # segue | pausa
+    quedas_seguidas: int = 2      # quedas seguidas até parar de chamar o assento
     limite_quadro: int = 60000    # caracteres do quadro enviados a cada assento
     assentos: list = field(default_factory=list)
     trabalhadores: list = field(default_factory=list)
     execucao: list = field(default_factory=list)
     execucao_limite: int = 3600
+    verificacao: list = field(default_factory=list)
 
 
 def _so(campos, dados, onde):
@@ -67,7 +69,7 @@ def carregar(quadro):
     _so({"dono", "protocolo", "assento", "trabalhador", "execucao"}, dados, ARQUIVO)
     c = Config(dono=dados.get("dono", "Dono"))
     p = dados.get("protocolo", {})
-    _so({"rodadas_sem_objecao", "disjuntor", "quorum", "assento_caido", "limite_quadro"}, p, "[protocolo]")
+    _so({"rodadas_sem_objecao", "disjuntor", "quorum", "assento_caido", "limite_quadro", "quedas_seguidas"}, p, "[protocolo]")
     for k, v in p.items():
         setattr(c, k, v)
     if c.assento_caido not in ("segue", "pausa"):
@@ -107,7 +109,8 @@ def carregar(quadro):
         except TypeError:
             raise ErroConfig("[[trabalhador]] precisa de nome, url e modelo")
     e = dados.get("execucao", {})
-    _so({"comando", "limite"}, e, "[execucao]")
+    _so({"comando", "limite", "verificacao"}, e, "[execucao]")
     c.execucao = e.get("comando", [])
     c.execucao_limite = e.get("limite", 3600)
+    c.verificacao = e.get("verificacao", [])
     return c

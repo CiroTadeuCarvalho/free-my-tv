@@ -7,17 +7,19 @@ rodadas_sem_objecao = 2       # consenso: rodadas seguidas sem objeção nova
 disjuntor = 20                # sem consenso nisso, para e escala para o dono
 quorum = 3                    # falas válidas para a rodada valer
 assento_caido = "segue"       # "segue": o conselho continua se houver quórum; "pausa": para e escala
+quedas_seguidas = 2           # caiu isso de vezes seguidas (ou uma por cota): para de chamar até o `wr continuar`
 limite_quadro = 60000         # caracteres do quadro por chamada; acima disso, um trabalhador resume
 
 # Cada assento entra pelo CLI dele, logado na assinatura (sem chave de API).
 # entrada: "stdin" (o texto vai pela entrada padrão), "arg" (vira o último argumento)
 # ou "arquivo" (vai num arquivo; ponha {arquivo} no comando).
+# Os comandos abaixo ligam o modo somente leitura de cada CLI: assento delibera, não mexe em arquivo.
 
 [[assento]]
 id = "fabricio"
 nome = "Fabrício"
 papel = "Você pesa risco e consequência antes de propor."
-comando = ["claude", "-p"]
+comando = ["claude", "-p", "--permission-mode", "plan"]
 entrada = "stdin"
 relator = true                # escreve a decisão final
 
@@ -25,7 +27,7 @@ relator = true                # escreve a decisão final
 id = "raj"
 nome = "Raj"
 papel = "Você busca o dado e a evidência que sustentam ou derrubam cada posição."
-comando = ["agy", "-p"]       # escolha o Gemini 4 Argon com /model numa sessão normal do agy antes
+comando = ["agy", "--mode", "plan", "-p"]   # escolha o Gemini 4 Argon com /model numa sessão normal do agy antes
 entrada = "arg"
 tty = true                    # há relatos de `agy -p` não escrever nada sem terminal
 
@@ -33,14 +35,14 @@ tty = true                    # há relatos de `agy -p` não escrever nada sem t
 id = "ze"
 nome = "Zé"
 papel = "Você traz o ângulo que ninguém considerou e o que está acontecendo agora."
-comando = ["grok", "--no-auto-update", "-p"]
+comando = ["grok", "--no-auto-update", "--sandbox", "read-only", "-p"]
 entrada = "arg"
 
 [[assento]]
 id = "theofilo"
 nome = "Theófilo"
 papel = "Você é o adversário do conselho: procura o furo antes que a realidade procure."
-comando = ["codex", "exec", "-"]
+comando = ["codex", "exec", "--sandbox", "read-only", "--skip-git-repo-check", "-"]
 entrada = "stdin"
 replica = true                # réplica combativa obrigatória; fala por último
 
@@ -78,3 +80,4 @@ limite = 600
 # [execucao]
 # comando = ["claw", "council", "--file", "{decisao}"]   # exemplo; confira a sintaxe do seu
 # limite = 3600
+# verificacao = ["python3", "-m", "unittest"]   # a execução só vale se isto passar

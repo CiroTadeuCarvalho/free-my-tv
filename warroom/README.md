@@ -82,16 +82,17 @@ Cada assento é o CLI do fornecedor, logado na assinatura dele, sem chave de API
 
 | Assento | Comando padrão | Situação |
 |---|---|---|
-| Fabrício | `claude -p` (texto pela entrada padrão) | Testado de verdade. |
-| Theófilo | `codex exec -` (texto pela entrada padrão) | Não testado: sem o CLI na máquina onde isto foi escrito. |
-| Raj | `agy -p "<texto>"`, num pseudo-terminal | Não testado. Há relatos de `agy -p` não escrever nada, ou travar, sem terminal; por isso `tty = true`, que só existe em Linux e macOS. Para o Gemini 4 Argon, escolha-o com `/model` numa sessão normal do `agy` antes. |
-| Zé | `grok --no-auto-update -p "<texto>"` | Não testado. |
+| Fabrício | `claude -p --permission-mode plan` (texto pela entrada padrão) | Testado de verdade. |
+| Theófilo | `codex exec --sandbox read-only --skip-git-repo-check -` (texto pela entrada padrão) | Não testado: sem o CLI na máquina onde isto foi escrito. |
+| Raj | `agy --mode plan -p "<texto>"`, num pseudo-terminal | Não testado. Há relatos de `agy -p` não escrever nada, ou travar, sem terminal; por isso `tty = true`, que só existe em Linux e macOS. Para o Gemini 4 Argon, escolha-o com `/model` numa sessão normal do `agy` antes. |
+| Zé | `grok --no-auto-update --sandbox read-only -p "<texto>"` | Não testado. |
 
 Se um comando não servir, troque `comando` e `entrada` (`stdin`, `arg` ou `arquivo`) no `warroom.toml`: nada disso
 está preso no código. `wr assentos --testar` diz na hora qual responde.
 
 **Cota.** Quando um CLI sai com erro, não responde no tempo ou devolve vazio, o assento cai naquela rodada e a queda
-fica gravada no quadro (com `cota: sim` quando a mensagem é de limite de uso).
+fica gravada no quadro (com `cota: sim` quando a mensagem é de limite de uso). Quem cai por cota, ou cai duas rodadas
+seguidas, para de ser chamado até o próximo `wr continuar`.
 
 **Braço 24/7 (Grok Bot e parecidos).** Não dá para chamar por comando, então entra como assento `tipo = "externo"` e
 entrega a fala pelo servidor MCP: `wr --quadro <pasta> mcp --assento zebot`. As ferramentas são `wr_listar`,
@@ -115,8 +116,26 @@ Sem trabalhador disponível, as falas mais antigas são cortadas do texto enviad
 ## Braço de execução
 
 Com `[execucao] comando = [...]` no `warroom.toml`, depois do consenso o `wr` roda esse comando trocando `{decisao}`
-pelo caminho da `DECISAO.md` e grava a saída em `EXECUCAO.md`. É aqui que um orquestrador de agentes de código entra.
+pelo caminho da `DECISAO.md` e grava a saída em `EXECUCAO.md`. Com `verificacao = [...]`, roda esse segundo comando
+depois e grava se passou: a execução só vale se ele passar. É aqui que um orquestrador de agentes de código entra.
 Desligado por padrão; a sintaxe do orquestrador escolhido precisa ser conferida na documentação dele.
+
+## O que veio de outros projetos
+
+O protocolo é do WarRoom. Destes projetos entraram ideias, reescritas aqui; nenhuma linha de código foi copiada.
+
+| De onde | O que entrou | Por quê |
+|---|---|---|
+| [Claw Orchestrator](https://github.com/Enderfga/claw-orchestrator) (MIT) | Os argumentos de somente leitura de cada CLI: `claude --permission-mode plan`, `codex exec --sandbox read-only --skip-git-repo-check`, `agy --mode plan`, `grok --sandbox read-only`. | Assento delibera, não mexe em arquivo. São os argumentos que o Claw usa no código dele. |
+| Claw Orchestrator | Entrada fechada para o CLI que recebe o texto por argumento. | Há CLI que fica esperando a entrada e trava. |
+| Claw Orchestrator | Disjuntor por assento: caiu por cota, ou duas vezes seguidas, para de ser chamado até o `wr continuar`. | Cota não volta em minutos; insistir a cada rodada só gasta tempo. |
+| Claw Orchestrator | Leitura tolerante do veredito (`POSIÇÃO`, `**POSICAO**:`, `OBJEÇÕES NOVAS`). | Modelo erra a grafia; perder uma fala boa por um acento custa uma chamada. |
+| Claw Orchestrator | `verificacao` no braço de execução: a execução só vale se um comando que o executor não escreveu passar. | Quem executa não julga o próprio trabalho. |
+| [Plugin do Codex para o Claude Code](https://github.com/openai/codex-plugin-cc) (Apache-2.0), revisão adversarial | A postura da réplica (ceticismo de partida, nada de crédito por intenção, agressivo sem inventar fato) e a barra da objeção (só o que muda a decisão; uma forte vale mais que várias fracas). | Num teste real a primeira rodada trouxe 12 objeções novas; boa parte era detalhe de execução. |
+
+O que ficou de fora, de propósito: conselho em worktrees separados e votação até concordar (Claw, agent-council),
+porque o WarRoom é quadro compartilhado com regra própria de consenso; sessões em tmux (CLI Agent Orchestrator),
+porque prende ao Linux; painel web e teto de gasto em dólar, porque os assentos rodam em assinatura.
 
 ## Decisões que são do dono
 
@@ -135,8 +154,8 @@ O insumo deixou estes pontos em aberto. Cada um tem um padrão que funciona e um
 - "Objeção nova" é o que o assento declara, menos o que já está escrito igual no quadro. A mesma objeção com outras
   palavras passa como nova. O efeito é atrasar o consenso, nunca adiantá-lo.
 - As rodadas são em fila, um assento por vez. É o que faz todos lerem o mesmo quadro; custa tempo.
-- O `wr` pede aos assentos que não usem ferramentas nem mexam em arquivos, mas quem obedece é o CLI. Rode-o numa
-  pasta onde isso não faça estrago, ou ligue o modo somente leitura de cada CLI no `comando`.
+- O exemplo liga o modo somente leitura de cada CLI. O do Claude foi testado; os do Codex, do Antigravity e do
+  Grok vêm do código do Claw Orchestrator e não foram testados aqui.
 - A seção `## Raciocínio` pede os argumentos e as evidências da posição, não o pensamento passo a passo do
   modelo. Pedir o passo a passo fez o CLI do Claude recusar as quatro falas num teste real.
 - Dois `wr` na mesma deliberação ao mesmo tempo não são protegidos por trava.
@@ -148,4 +167,5 @@ python3 -m unittest discover -s tests
 ```
 
 Cobrem o formato, o consenso, o disjuntor, a queda de assento, a réplica substituta, a retomada, os três modos de
-entrada dos CLIs, o pseudo-terminal, o fallback dos trabalhadores, o resumo do quadro e o servidor MCP.
+entrada dos CLIs, o pseudo-terminal, o disjuntor por assento, o fallback dos trabalhadores, o resumo do quadro, a
+verificação da execução e o servidor MCP.

@@ -46,6 +46,12 @@ class Formato(unittest.TestCase):
         t = BOA.replace("concordo", "discordo").replace(" nenhuma", "\n- uma\n- duas\n\nfim")
         self.assertEqual(P.analisar(t, False)["objecoes"], ["uma", "duas"])
 
+    def test_grafias_que_os_modelos_usam(self):
+        t = "## Raciocínio\nx\n## Veredito\n**POSIÇÃO**: Discordo\n**OBJEÇÕES NOVAS:**\n* falta o teste\n"
+        a = P.analisar(t, False)
+        self.assertEqual((a["posicao"], a["objecoes"]), ("discordo", ["falta o teste"]))
+        self.assertEqual(P.analisar(BOA.replace("nenhuma", "Nenhuma."), False)["objecoes"], [])
+
     def test_recusas(self):
         self.assertFalse(P.analisar("oi", False)["valida"])
         self.assertFalse(P.analisar(BOA, True)["valida"])          # réplica obrigatória
@@ -99,6 +105,17 @@ class Protocolo(unittest.TestCase):
         self.assertEqual(P.rodar(q, i, cfg, calado), "fechada")
         self.assertEqual(Q.ler(q, i, "r01-a.md")[0]["cota"], "sim")
 
+    def test_assento_sem_cota_para_de_ser_chamado(self):
+        s = [("a", ["ok"], ""), ("b", ["ok"], ""), ("c", ["ok"], ""),
+             ("t", ["objecao: x", "ok"], "replica = true"), ("z", ["cota", "ok"], "")]
+        q, cfg = quadro(s)
+        cfg.assentos[-1].tipo = "cli"                             # o disjuntor vale para CLI de verdade
+        cfg.assentos[-1].comando = [sys.executable, "-c", "import sys; sys.exit('usage limit reached')"]
+        i = P.abrir(q, cfg, "t", "t")
+        self.assertEqual(P.rodar(q, i, cfg, calado), "fechada")
+        self.assertEqual(Q.ler(q, i, "r01-z.md")[0]["cota"], "sim")
+        self.assertIn("não chamado", Q.ler(q, i, "r02-z.md")[0]["motivo"])
+
     def test_abaixo_do_quorum_escala(self):
         s = [("a", ["cota"], ""), ("b", ["cota"], "")] + QUATRO[2:]
         q, cfg = quadro(s)
@@ -147,6 +164,14 @@ class Protocolo(unittest.TestCase):
         with open(os.path.join(Q.pasta(q, i), "EXECUCAO.md"), encoding="utf-8") as f:
             self.assertIn("código 0", f.read())
 
+    def test_execucao_so_vale_se_a_verificacao_passar(self):
+        py = sys.executable.replace("\\", "/")
+        q, cfg = quadro(QUATRO, extra='\n[execucao]\ncomando = ["%s", "-c", "pass"]\n'
+                        'verificacao = ["%s", "-c", "import sys; sys.exit(3)"]\n' % (py, py))
+        i = P.abrir(q, cfg, "t", "t")
+        P.rodar(q, i, cfg, calado)
+        self.assertEqual(Q.ler(q, i, "EXECUCAO.md")[0]["verificacao"], "FALHOU")
+
 
 class Assentos(unittest.TestCase):
     def assento(self, codigo, entrada="stdin", **mais):
@@ -165,6 +190,8 @@ class Assentos(unittest.TestCase):
         self.assertTrue(e.exception.cota)
         with self.assertRaises(AssentoCaiu):
             chamar(self.assento("pass"), "oi")                     # saída vazia
+        # com o texto no argumento, a entrada fica fechada: quem lê dela não trava
+        self.assertEqual(chamar(self.assento("import sys; print('lido', len(sys.stdin.read()))", "arg"), "oi"), "lido 0")
         with self.assertRaises(AssentoCaiu):
             chamar(self.assento("import time; time.sleep(5)", limite=1), "oi")
         with self.assertRaises(AssentoCaiu):

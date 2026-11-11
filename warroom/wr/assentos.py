@@ -6,7 +6,8 @@ import subprocess
 import tempfile
 
 # Mensagens que os CLIs dão quando a cota do plano acaba.
-COTA = re.compile(r"usage limit|rate limit|quota|limit reached|too many requests|429|limite de uso", re.I)
+COTA = re.compile(r"usage limits?|rate.?limit|quota|limit reached|hit your limit|too many requests|"
+                  r"resource.?exhausted|out of credits|\b429\b|limite de uso", re.I)
 
 
 class AssentoCaiu(Exception):
@@ -79,7 +80,9 @@ def chamar(assento, prompt, rodada=1):
         if assento.tty and os.name == "posix":
             codigo, saida, erro = _com_tty(cmd, entrada, assento.limite)
         else:
-            r = subprocess.run(cmd, input=entrada, capture_output=True, text=True,
+            # Sem texto para mandar, a entrada fica fechada: há CLI que espera por ela e trava.
+            r = subprocess.run(cmd, input=entrada, stdin=None if entrada is not None else subprocess.DEVNULL,
+                               capture_output=True, text=True,
                                timeout=assento.limite, encoding="utf-8", errors="replace")
             codigo, saida, erro = r.returncode, r.stdout, r.stderr
     except FileNotFoundError:
