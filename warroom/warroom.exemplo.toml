@@ -1,0 +1,80 @@
+# WarRoom: configuração do quadro. Nada de chave ou senha aqui: este arquivo vai para o Git.
+
+dono = "Dono"                 # quem recebe a escalada e tem a palavra final
+
+[protocolo]
+rodadas_sem_objecao = 2       # consenso: rodadas seguidas sem objeção nova
+disjuntor = 20                # sem consenso nisso, para e escala para o dono
+quorum = 3                    # falas válidas para a rodada valer
+assento_caido = "segue"       # "segue": o conselho continua se houver quórum; "pausa": para e escala
+limite_quadro = 60000         # caracteres do quadro por chamada; acima disso, um trabalhador resume
+
+# Cada assento entra pelo CLI dele, logado na assinatura (sem chave de API).
+# entrada: "stdin" (o texto vai pela entrada padrão), "arg" (vira o último argumento)
+# ou "arquivo" (vai num arquivo; ponha {arquivo} no comando).
+
+[[assento]]
+id = "fabricio"
+nome = "Fabrício"
+papel = "Você pesa risco e consequência antes de propor."
+comando = ["claude", "-p"]
+entrada = "stdin"
+relator = true                # escreve a decisão final
+
+[[assento]]
+id = "raj"
+nome = "Raj"
+papel = "Você busca o dado e a evidência que sustentam ou derrubam cada posição."
+comando = ["agy", "-p"]       # escolha o Gemini 4 Argon com /model numa sessão normal do agy antes
+entrada = "arg"
+tty = true                    # há relatos de `agy -p` não escrever nada sem terminal
+
+[[assento]]
+id = "ze"
+nome = "Zé"
+papel = "Você traz o ângulo que ninguém considerou e o que está acontecendo agora."
+comando = ["grok", "--no-auto-update", "-p"]
+entrada = "arg"
+
+[[assento]]
+id = "theofilo"
+nome = "Theófilo"
+papel = "Você é o adversário do conselho: procura o furo antes que a realidade procure."
+comando = ["codex", "exec", "-"]
+entrada = "stdin"
+replica = true                # réplica combativa obrigatória; fala por último
+
+# Braço 24/7 que entrega a fala pelo servidor MCP (`wr mcp`), em vez de ser chamado:
+# [[assento]]
+# id = "zebot"
+# nome = "Zé (Grok Bot)"
+# tipo = "externo"
+
+# Trabalhadores: modelos abertos para resumir o quadro quando ele cresce. Nunca assento.
+# A ordem é a cadeia de fallback. Tarefa aberta com --sensivel só usa os que têm local = true.
+# A chave fica numa variável de ambiente; aqui vai só o nome dela.
+
+[[trabalhador]]
+nome = "ollama"
+url = "http://127.0.0.1:11434/v1"
+modelo = "qwen2.5:14b"
+local = true
+limite = 600
+
+# Rotas gratuitas na nuvem: confira a URL e o modelo no painel de cada uma antes de ligar.
+# [[trabalhador]]
+# nome = "zai"
+# url = "https://api.z.ai/api/paas/v4"
+# modelo = "glm-4.5-flash"
+# chave_env = "ZAI_API_KEY"
+#
+# [[trabalhador]]
+# nome = "openrouter"
+# url = "https://openrouter.ai/api/v1"
+# modelo = "COLOQUE-UM-MODELO:free"
+# chave_env = "OPENROUTER_API_KEY"
+
+# Braço de execução: depois do consenso, entrega a DECISAO.md a um orquestrador.
+# [execucao]
+# comando = ["claw", "council", "--file", "{decisao}"]   # exemplo; confira a sintaxe do seu
+# limite = 3600

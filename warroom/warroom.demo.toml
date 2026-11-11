@@ -1,0 +1,30 @@
+# Assentos simulados: mostra o protocolo rodando sem gastar cota de ninguém.
+dono = "Dono"
+
+[protocolo]
+quorum = 3
+
+[[assento]]
+id = "fabricio"
+nome = "Fabrício"
+tipo = "simulado"
+roteiro = ["ok"]
+
+[[assento]]
+id = "raj"
+nome = "Raj"
+tipo = "simulado"
+roteiro = ["objecao: falta medir o custo antes de decidir", "ok"]
+
+[[assento]]
+id = "ze"
+nome = "Zé"
+tipo = "simulado"
+roteiro = ["ok", "cota", "ok"]
+
+[[assento]]
+id = "theofilo"
+nome = "Theófilo"
+tipo = "simulado"
+replica = true
+roteiro = ["objecao: o plano não tem critério de parada", "objecao: falta medir o custo antes de decidir", "ok"]
